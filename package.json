@@ -1,0 +1,26 @@
+{
+  "name": "arkoj",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/vue-fontawesome": "^3.0.8",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "tailwindcss": "^3.4.17",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "typescript": "^5.7.2",
+    "vite-plus": "latest"
+  },
+  "packageManager": "pnpm@10.12.1"
+}

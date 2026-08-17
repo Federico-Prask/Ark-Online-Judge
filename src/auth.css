@@ -1,0 +1,242 @@
+/* ArkOJ auth: login/register modal + user menu, matching the terminal aesthetic */
+.user-area {
+  position: relative;
+}
+.user-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 190px;
+  background: #0c0e11;
+  border: 1px solid #2a3036;
+  padding: 12px 14px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.user-menu::before {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: -6px;
+  width: 10px;
+  height: 10px;
+  background: #0c0e11;
+  border-left: 1px solid #2a3036;
+  border-top: 1px solid #2a3036;
+  transform: rotate(45deg);
+}
+.user-menu b {
+  font:
+    800 13px Harmony,
+    Arial,
+    sans-serif;
+  color: #f2f5f7;
+  letter-spacing: 0.02em;
+}
+.user-menu small {
+  font:
+    9px 'DM Mono',
+    monospace;
+  color: #9ea8ae;
+  letter-spacing: 0.1em;
+}
+.user-menu button {
+  background: #171b1f;
+  border: 1px solid #2a3036;
+  color: #e6eaee;
+  font:
+    11px 'DM Mono',
+    monospace;
+  padding: 7px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.user-menu button:hover {
+  background: #f4d800;
+  color: #0b0b0b;
+  border-color: #f4d800;
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 12, 0.66);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  padding: 18px;
+}
+.auth-modal {
+  width: min(400px, 94vw);
+  background: #101317;
+  border: 1px solid #2a3036;
+  padding: 22px 24px 18px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+/* Corner brackets: the shared rule draws the top+right borders (elbow at the
+   box's top-right); each corner needs a quarter-turn so the elbow hugs the
+   modal corner: top-left -> rotate(-90deg) draws "┌", bottom-right ->
+   rotate(90deg) draws "┘". */
+.auth-modal::before,
+.auth-modal::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #9dc1f1;
+  border-left: none;
+  border-bottom: none;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.auth-modal::before {
+  left: -6px;
+  top: -6px;
+  transform: rotate(-90deg);
+}
+.auth-modal::after {
+  right: -6px;
+  bottom: -6px;
+  transform: rotate(90deg);
+}
+.auth-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.auth-head small {
+  font:
+    9px 'DM Mono',
+    monospace;
+  color: #788188;
+  letter-spacing: 0.14em;
+}
+.auth-head h2 {
+  margin: 0;
+  font:
+    900 22px Harmony,
+    Arial,
+    sans-serif;
+  color: #f2f5f7;
+  letter-spacing: -1px;
+}
+.auth-close {
+  margin-left: auto;
+  background: none;
+  border: 1px solid #2a3036;
+  color: #9ea8ae;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.auth-close:hover {
+  color: #f2f5f7;
+  border-color: #9dc1f1;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid #2a3036;
+  margin-bottom: 18px;
+}
+.auth-tabs button {
+  flex: 1;
+  background: none;
+  border: 0;
+  padding: 9px 0;
+  color: #788188;
+  font:
+    10px 'DM Mono',
+    monospace;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+}
+.auth-tabs button.sel {
+  color: #f4d800;
+  box-shadow: inset 0 -2px 0 #f4d800;
+}
+.auth-field {
+  display: block;
+  margin-bottom: 14px;
+}
+.auth-field small {
+  font:
+    9px 'DM Mono',
+    monospace;
+  color: #788188;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+  display: block;
+}
+.auth-field input {
+  width: 100%;
+  background: #0b0d10;
+  border: 1px solid #2a3036;
+  color: #f2f5f7;
+  font:
+    13px 'DM Mono',
+    monospace;
+  padding: 10px 12px;
+  outline: none;
+}
+.auth-field input:focus {
+  border-color: #9dc1f1;
+}
+.auth-field input:disabled {
+  opacity: 0.5;
+}
+.auth-hint {
+  font:
+    10px 'DM Mono',
+    monospace;
+  color: #9ea8ae;
+  margin: 0 0 10px;
+}
+.auth-error {
+  font:
+    11px 'DM Mono',
+    monospace;
+  color: #ff7a6e;
+  background: rgba(255, 122, 110, 0.08);
+  border: 1px solid rgba(255, 122, 110, 0.35);
+  padding: 8px 10px;
+  margin: 0 0 12px;
+}
+.auth-submit {
+  width: 100%;
+  background: #f4d800;
+  color: #0b0b0b;
+  border: 0;
+  font:
+    800 13px Harmony,
+    Arial,
+    sans-serif;
+  padding: 12px;
+  cursor: pointer;
+  /* 45-degree chamfer: equal 12px cut on both axes */
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.auth-submit:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.auth-foot {
+  font:
+    9px 'DM Mono',
+    monospace;
+  color: #5f6a72;
+  text-align: center;
+  margin: 14px 0 0;
+  letter-spacing: 0.1em;
+}

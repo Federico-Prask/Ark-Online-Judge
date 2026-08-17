@@ -1,0 +1,111 @@
+.dark-mode {
+  --dm-bg: #0c1013;
+  --dm-panel: #151a1e;
+  --dm-soft: #1d252b;
+  --dm-line: #354049;
+  --dm-text: #e8edf0;
+  --dm-muted: #87939b;
+  background-color: var(--dm-bg) !important;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px) !important;
+  color: var(--dm-text);
+}
+.dark-mode .top,
+.dark-mode .command-row > *,
+.dark-mode .problem-panel,
+.dark-mode .status-panel {
+  background: var(--dm-panel);
+  color: var(--dm-text);
+  border-color: var(--dm-line);
+}
+.dark-mode .top {
+  border-bottom-color: var(--dm-line);
+}
+.dark-mode .brand small,
+.dark-mode nav button,
+.dark-mode .clock,
+.dark-mode .section-index,
+.dark-mode .problem-id,
+.dark-mode .problem-name small,
+.dark-mode footer {
+  color: var(--dm-muted);
+}
+.dark-mode .user-button {
+  color: var(--dm-text);
+  border-color: var(--dm-line);
+}
+.dark-mode .command-row,
+.dark-mode .lower {
+  background: var(--dm-line);
+}
+.dark-mode .problem {
+  border-color: var(--dm-line);
+}
+.dark-mode .search {
+  border-color: #66737c;
+}
+.dark-mode .search input {
+  color: var(--dm-text);
+}
+.dark-mode .contest {
+  background: #dff136;
+  color: #11181d;
+}
+.dark-mode .theme-toggle {
+  color: #dff136;
+}
+.theme-toggle {
+  border: 0;
+  background: none;
+  color: #58636a;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 7px;
+}
+.dark-mode .save,
+.dark-mode .all-problems {
+  color: var(--dm-text);
+  border-color: #52616b;
+}
+.dark-mode .command-title h2,
+.dark-mode .section-head h2,
+.dark-mode .problem-name b,
+.dark-mode .command-item b,
+.dark-mode .operator h3 {
+  color: var(--dm-text);
+}
+.dark-mode .operator p,
+.dark-mode .status-text {
+  color: var(--dm-muted);
+}
+.dark-mode .status-bar {
+  background: var(--dm-soft);
+}
+.dark-mode .status-bar span {
+  background: #9dc1f1;
+}
+.dark-mode .problem-name small,
+.dark-mode .command-item strong span,
+.dark-mode .accept-rate small {
+  color: var(--dm-muted);
+}
+.dark-mode .difficulty {
+  background: var(--dm-soft);
+  color: var(--dm-muted);
+}
+.dark-mode .difficulty.easy {
+  background: #1d3a2c;
+  color: #6fdc9a;
+}
+.dark-mode .difficulty.medium {
+  background: #3a2f16;
+  color: #f0c75e;
+}
+.dark-mode .difficulty.hard {
+  background: #3a1f1c;
+  color: #ff8f84;
+}
+.dark-mode .search {
+  background: transparent;
+}
