@@ -4,6 +4,9 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
+    watch: {
+      ignored: ['**/.nvm/**', '**/.cache/**', '**/.local/**', '**/node_modules/**', '**/.vite-plus/**'],
+    },
     host: '0.0.0.0',
     port: 5173,
     allowedHosts: true,

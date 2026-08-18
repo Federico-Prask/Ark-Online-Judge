@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { api, type User } from './api'
+import { api, setStoredToken, type User } from './api'
+import HomePage from './pages/HomePage.vue'
+import ProblemsPage from './pages/ProblemsPage.vue'
+import ProblemDetailPage from './pages/ProblemDetailPage.vue'
+import ListsPage from './pages/ListsPage.vue'
+import ListDetailPage from './pages/ListDetailPage.vue'
+import ContestsPage from './pages/ContestsPage.vue'
+import ContestDetailPage from './pages/ContestDetailPage.vue'
+import RankPage from './pages/RankPage.vue'
+import UserPage from './pages/UserPage.vue'
+import DiscussPage from './pages/DiscussPage.vue'
+
 // --- authentication state (backed by server/) ---
 const user = ref<User | null>(null)
 const authBusy = ref(false)
@@ -15,11 +26,10 @@ const displayName = computed(() => {
   const n = user.value?.nickname || user.value?.username || ''
   return n.toUpperCase()
 })
-// raw nickname (not uppercased) for the hero heading, e.g. "晚上好 / ArkOJ"
-const userName = computed(() => user.value?.nickname || user.value?.username || '')
 const userRoleLabel = computed(() =>
   user.value ? `ROLE / ${user.value.role.toUpperCase()}` : 'LOGIN REQUIRED',
 )
+
 async function submitAuth() {
   authError.value = ''
   authBusy.value = true
@@ -28,6 +38,8 @@ async function submitAuth() {
       authMode.value === 'login'
         ? await api.login(authUsername.value, authPassword.value)
         : await api.register(authUsername.value, authPassword.value)
+    // Persist token immediately (memory + localStorage) before any later call.
+    if (res.token) setStoredToken(res.token)
     user.value = res.user
     showAuth.value = false
     authUsername.value = ''
@@ -62,9 +74,11 @@ async function logout() {
     await api.logout()
   } catch {
     /* server unreachable: still drop the local session */
+    setStoredToken(null)
   }
   user.value = null
 }
+
 // --- profile editing (PUT /api/auth/profile) ---
 const showProfile = ref(false)
 const profileBusy = ref(false)
@@ -72,25 +86,7 @@ const profileError = ref('')
 const profileNickname = ref('')
 const profileAvatar = ref('')
 const profileBio = ref('')
-// Always a real avatar image: the user's picture when set, otherwise an
-// auto-generated initial avatar (SVG data URL) so every avatar spot renders
-// an <img> instead of an icon placeholder.
-const avatarSrc = computed(() => {
-  if (user.value?.avatar) return user.value.avatar
-  const ch = (user.value?.nickname || user.value?.username || '?').charAt(0).toUpperCase()
-  const safe = ch
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">` +
-    `<rect width="160" height="160" fill="#151a1e"/>` +
-    `<rect x="5" y="5" width="150" height="150" fill="none" stroke="#354049" stroke-width="2"/>` +
-    `<text x="80" y="112" font-family="monospace" font-size="76" font-weight="800" fill="#9dc1f1" text-anchor="middle">${safe}</text>` +
-    `</svg>`
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
-})
+
 function openProfile() {
   profileError.value = ''
   profileNickname.value = user.value?.nickname || user.value?.username || ''
@@ -118,28 +114,31 @@ async function saveProfile() {
     profileBusy.value = false
   }
 }
+
 onMounted(async () => {
   try {
     user.value = await api.me()
   } catch {
     /* guest access */
   }
+  // live clock
+  window.setInterval(() => {
+    clock.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  }, 1000)
 })
+
 const darkMode = ref(false)
-// restore persisted theme if any
 if (typeof window !== 'undefined') {
   const saved = localStorage.getItem('ark_dark')
   if (saved === 'true') darkMode.value = true
 }
-// persist changes and keep <html> in sync: index.html pre-applies the class
-// to documentElement to avoid a flash, so it must be toggled back here too,
-// otherwise dark.css descendant rules keep matching via the <html> ancestor
 watch(darkMode, (val) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('ark_dark', val ? 'true' : 'false')
     document.documentElement.classList.toggle('dark-mode', val)
   }
 })
+
 const currentHour = new Date().getHours()
 const greeting = computed(() =>
   currentHour >= 23 || currentHour < 5
@@ -152,58 +151,117 @@ const greeting = computed(() =>
           ? '下午好'
           : '晚上好',
 )
-const active = ref('首页')
-const nav = ['首页', '题库', '竞赛', '排名', '讨论']
-// fake system latency shown on the hero plate, randomized per page load
-const readyMs = ref(1 + Math.floor(Math.random() * 150))
-const difficultyClass = (tag: string) =>
-  tag === '入门' ? 'easy' : tag === '困难' ? 'hard' : 'medium'
-const query = ref('')
-const problems = [
-  {
-    id: 'A001',
-    title: 'A+B Problem',
-    sub: '基础运算 / BASIC OPERATION',
-    tag: '入门',
-    rate: '98.7%',
-  },
-  {
-    id: 'A017',
-    title: '不稳定的排序系统',
-    sub: '排序 · 数据结构 / SORTING',
-    tag: '进阶',
-    rate: '74.2%',
-  },
-  {
-    id: 'B204',
-    title: '轨道网络的最短路径',
-    sub: '图论 · 最短路 / GRAPH',
-    tag: '困难',
-    rate: '42.8%',
-  },
-]
-const filtered = computed(() =>
-  problems.filter(
-    (p) =>
-      !query.value || `${p.id}${p.title}${p.sub}`.toLowerCase().includes(query.value.toLowerCase()),
-  ),
-)
+
+const clock = ref(new Date().toLocaleTimeString('zh-CN', { hour12: false }))
+
+// --- simple client-side routing ---
+type NavKey = '首页' | '题库' | '题单' | '竞赛' | '排名' | '讨论'
+const nav: NavKey[] = ['首页', '题库', '题单', '竞赛', '排名', '讨论']
+
+type Route =
+  | { name: '首页' }
+  | { name: '题库' }
+  | { name: '题目'; code: string; contestId?: number | null }
+  | { name: '题单' }
+  | { name: '题单详情'; id: number }
+  | { name: '竞赛' }
+  | { name: '比赛'; id: number }
+  | { name: '排名' }
+  | { name: '讨论'; focusId?: number | null }
+  | { name: '用户'; username: string }
+
+const route = ref<Route>({ name: '首页' })
+
+const activeNav = computed<NavKey | ''>(() => {
+  const n = route.value.name
+  if (n === '题目') return '题库'
+  if (n === '题单详情') return '题单'
+  if (n === '比赛') return '竞赛'
+  if (n === '用户') return ''
+  return n as NavKey
+})
+
+function goNav(item: NavKey) {
+  route.value = { name: item }
+  userMenu.value = false
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function navigate(page: string, payload: Record<string, unknown> = {}) {
+  userMenu.value = false
+  switch (page) {
+    case '首页':
+      route.value = { name: '首页' }
+      break
+    case '题库':
+      route.value = { name: '题库' }
+      break
+    case '题目':
+      route.value = {
+        name: '题目',
+        code: String(payload.code || ''),
+        contestId: (payload.contestId as number) || null,
+      }
+      break
+    case '题单':
+      route.value = { name: '题单' }
+      break
+    case '题单详情':
+      route.value = { name: '题单详情', id: Number(payload.id) }
+      break
+    case '竞赛':
+      route.value = { name: '竞赛' }
+      break
+    case '比赛':
+      route.value = { name: '比赛', id: Number(payload.id) }
+      break
+    case '排名':
+      route.value = { name: '排名' }
+      break
+    case '讨论':
+      route.value = { name: '讨论', focusId: (payload.id as number) || null }
+      break
+    case '用户':
+      route.value = { name: '用户', username: String(payload.username || '') }
+      break
+    default:
+      route.value = { name: '首页' }
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function goMyProfile() {
+  if (user.value) navigate('用户', { username: user.value.username })
+  userMenu.value = false
+}
+
+const cornerNote = computed(() => {
+  const n = route.value.name
+  if (n === '题库' || n === '题目') return '[ PROBLEM SET ]'
+  if (n === '题单' || n === '题单详情') return '[ LISTS ]'
+  if (n === '竞赛' || n === '比赛') return '[ CONTESTS ]'
+  if (n === '排名') return '[ RANKING ]'
+  if (n === '讨论') return '[ FORUM ]'
+  if (n === '用户') return '[ PROFILE ]'
+  return '[ 限时活动 ]'
+})
 </script>
+
 <template>
   <div class="terminal" :class="{ 'dark-mode': darkMode }">
     <header class="top">
-      <div class="brand">
+      <div class="brand clickable" @click="goNav('首页')">
         <span class="brand-symbol">A</span>
         <div><b>ArkOJ</b><small>ALGORITHM OPERATING SYSTEM</small></div>
       </div>
       <nav>
         <button
-          v-for="item in nav"
+          v-for="(item, idx) in nav"
           :key="item"
-          :class="{ sel: active === item }"
-          @click="active = item"
+          :class="{ sel: activeNav === item }"
+          @click="goNav(item)"
         >
-          {{ item }} <sup>0{{ nav.indexOf(item) + 1 }}</sup>
+          {{ item }} <sup>0{{ idx + 1 }}</sup>
         </button>
       </nav>
       <div class="top-right">
@@ -212,144 +270,103 @@ const filtered = computed(() =>
           @click="darkMode = !darkMode"
           :title="darkMode ? '切换浅色模式' : '切换深色模式'"
         >
-          <font-awesome-icon :icon="darkMode ? 'sun' : 'moon'" /></button
-        ><span class="online"><i></i> SYSTEM NOMINAL</span
-        ><span class="clock">{{ new Date().toLocaleTimeString('zh-CN', { hour12: false }) }}</span>
+          <font-awesome-icon :icon="darkMode ? 'sun' : 'moon'" />
+        </button>
+        <span class="online"><i></i> SYSTEM NOMINAL</span>
+        <span class="clock">{{ clock }}</span>
         <div class="user-area">
           <button class="user-button" @click="onUserClick">
             <font-awesome-icon icon="user" /> {{ logged ? displayName : '登录' }}
           </button>
           <div v-if="userMenu" class="user-menu">
-            <b>{{ displayName }}</b
-            ><small>{{ userRoleLabel }}</small
-            ><button @click="openProfile">编辑资料 <font-awesome-icon icon="user" /></button
-            ><button @click="logout">退出登录 <font-awesome-icon icon="arrow-right" /></button>
+            <b>{{ displayName }}</b>
+            <small>{{ userRoleLabel }}</small>
+            <button @click="goMyProfile">
+              个人主页 <font-awesome-icon icon="user" />
+            </button>
+            <button @click="openProfile">
+              编辑资料 <font-awesome-icon icon="user" />
+            </button>
+            <button @click="logout">
+              退出登录 <font-awesome-icon icon="arrow-right" />
+            </button>
           </div>
         </div>
       </div>
     </header>
+
     <div class="viewport-frame">
       <span class="frame tl"></span><span class="frame tr"></span><span class="frame bl"></span
       ><span class="frame br"></span>
+      <!-- Decorative corner labels live in the reserved strips, outside .viewport-body -->
       <div class="corner-notes" aria-hidden="true">
         <span class="corner-note tl">// RECOMPOSURE</span>
-        <span class="corner-note tr">[ 限时活动 ]</span>
+        <span class="corner-note tr">{{ cornerNote }}</span>
         <span class="corner-note bl">01</span>
         <span class="corner-note br">COORD 39°54′18″N</span>
       </div>
-      <section class="hero">
-        <div class="hero-meta">
-          // SESSION 01 / {{ logged ? 'AUTHENTICATED' : 'GUEST ACCESS' }}<br />COORD 39°54′18″N ·
-          116°23′29″E
-        </div>
-        <div class="hero-copy">
-          <div class="micro-tag">[ ARKOJ / HOMECOMING ]</div>
-          <h1 v-if="!logged">欢迎来到 ArkOJ<br /><strong>算法竞赛人</strong></h1>
-          <h1 v-else>
-            <span>{{ greeting }}</span
-            ><br /><strong>{{ userName }}</strong>
-          </h1>
-          <p>在这里，思考被编译，解法被验证。<br />构建你的算法坐标系，向未知发起测试。</p>
-          <div class="hero-actions">
-            <button class="action-main">开始训练 <font-awesome-icon icon="arrow-right" /></button
-            ><button class="action-secondary">查看竞赛日历</button>
-          </div>
-        </div>
-        <div class="hero-right">
-          <div class="avatar-window">
-            <img :src="avatarSrc" alt="avatar" />
-          </div>
-          <div class="cad-box">
-            <div class="bolt"></div>
-            <div class="cad-line one"></div>
-            <div class="cad-line two"></div>
-            <label>CORE / 0102</label>
-          </div>
-          <div class="big-number">01<span>02</span></div>
-          <div class="hero-plate">
-            <small>[ CORE MODULE ]</small><b>ALGORITHM / ONLINE</b
-            ><span>READY <i></i> {{ readyMs }}ms</span>
-          </div>
-        </div>
-        <div class="hero-foot">
-          <span>V///A <b>■■■■■■■□□□</b></span
-          ><span>RESPONSE / 24ms</span><span>BUILD 0.1.0</span>
-        </div>
-      </section>
-      <section class="command-row">
-        <div class="command-title">
-          <span class="section-index">01</span>
-          <div>
-            <small>// YOUR CONSOLE</small>
-            <h2>今日工作台</h2>
-          </div>
-        </div>
-        <div class="command-item">
-          <font-awesome-icon icon="list-check" />
-          <div><small>CONTINUE TRAINING</small><b>继续训练</b></div>
-          <strong>12<span>/20</span></strong
-          ><font-awesome-icon icon="arrow-right" class="arrow" />
-        </div>
-        <div class="command-item contest">
-          <font-awesome-icon icon="flag" />
-          <div><small>NEXT CONTEST · 42</small><b>全面测试</b></div>
-          <strong>06:18:42</strong><font-awesome-icon icon="arrow-right" class="arrow" />
-        </div>
-      </section>
-      <section class="lower">
-        <div class="problem-panel">
-          <div class="section-head">
-            <div>
-              <small>// RECOMMENDED PROBLEMS</small>
-              <h2>推荐题目</h2>
-            </div>
-            <div class="search">
-              <font-awesome-icon icon="magnifying-glass" /><input
-                v-model="query"
-                placeholder="搜索题目 / 编号 / 知识点"
-              />
-            </div>
-          </div>
-          <div class="problem" v-for="p in filtered" :key="p.id">
-            <span class="problem-id">{{ p.id }}</span>
-            <div class="problem-name">
-              <b>{{ p.title }}</b
-              ><small>{{ p.sub }}</small>
-            </div>
-            <span class="difficulty" :class="difficultyClass(p.tag)">{{ p.tag }}</span
-            ><span class="accept-rate">{{ p.rate }}<small>ACCEPTED</small></span
-            ><font-awesome-icon icon="arrow-right" class="arrow" />
-          </div>
-          <button class="all-problems">
-            进入完整题库 <font-awesome-icon icon="arrow-right" />
-          </button>
-        </div>
-        <aside class="status-panel">
-          <small>// OPERATOR STATUS</small>
-          <div class="operator">
-            <div class="avatar">
-              <img :src="avatarSrc" alt="avatar" />
-            </div>
-            <div>
-              <h3>{{ logged ? displayName : 'GUEST_USER' }}</h3>
-              <p>{{ userRoleLabel }}</p>
-            </div>
-          </div>
-          <div class="status-bar"><span></span></div>
-          <div class="status-text">
-            <span>本周完成</span><b>{{ logged ? '12 / 20' : '— / —' }}</b>
-          </div>
-          <button class="save" @click="onUserClick">
-            {{ logged ? '查看个人档案' : '登录以保存进度' }}
-            <font-awesome-icon icon="arrow-right" />
-          </button>
-        </aside>
-      </section>
+
+      <div class="viewport-body">
+        <HomePage
+          v-if="route.name === '首页'"
+          :user="user"
+          :greeting="greeting"
+          @navigate="navigate"
+          @login="openAuth('login')"
+        />
+        <ProblemsPage v-else-if="route.name === '题库'" @navigate="navigate" />
+        <ProblemDetailPage
+          v-else-if="route.name === '题目'"
+          :code="route.code"
+          :user="user"
+          :contest-id="route.contestId"
+          @navigate="navigate"
+          @login="openAuth('login')"
+        />
+        <ListsPage
+          v-else-if="route.name === '题单'"
+          :user="user"
+          @navigate="navigate"
+          @login="openAuth('login')"
+        />
+        <ListDetailPage
+          v-else-if="route.name === '题单详情'"
+          :id="route.id"
+          :user="user"
+          @navigate="navigate"
+        />
+        <ContestsPage v-else-if="route.name === '竞赛'" @navigate="navigate" />
+        <ContestDetailPage
+          v-else-if="route.name === '比赛'"
+          :id="route.id"
+          :user="user"
+          @navigate="navigate"
+          @login="openAuth('login')"
+        />
+        <RankPage v-else-if="route.name === '排名'" @navigate="navigate" />
+        <DiscussPage
+          v-else-if="route.name === '讨论'"
+          :user="user"
+          :focus-id="route.focusId"
+          @navigate="navigate"
+          @login="openAuth('login')"
+        />
+        <UserPage
+          v-else-if="route.name === '用户'"
+          :username="route.username"
+          :user="user"
+          @navigate="navigate"
+          @edit-profile="openProfile"
+        />
+      </div>
     </div>
+
     <footer>
-      <span>ArkOJ // ONLINE JUDGE</span><span><b class="signal"></b> ALL SYSTEMS NOMINAL</span
-      ><span>© 2024 ARK LABS · v0.1.0</span>
+      <span>ArkOJ // ONLINE JUDGE</span
+      ><span><b class="signal"></b> ALL SYSTEMS NOMINAL</span
+      ><span>© 2026 ARK LABS · v0.2.0</span>
     </footer>
+
     <div v-if="showAuth" class="auth-overlay" @click.self="closeAuth">
       <div class="auth-modal">
         <div class="auth-head">
@@ -394,6 +411,7 @@ const filtered = computed(() =>
         <p class="auth-foot">DEFAULT ROOT / admin · admin123</p>
       </div>
     </div>
+
     <div v-if="showProfile" class="auth-overlay" @click.self="closeProfile">
       <div class="auth-modal">
         <div class="auth-head">

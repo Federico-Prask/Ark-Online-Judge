@@ -52,7 +52,27 @@
   line-height: 1;
 }
 
-/* Small monospace annotations scattered at corners for 'engineering' feel */
+/* Small monospace annotations scattered at corners for 'engineering' feel.
+   Layout:
+     .viewport-frame          — outer box (L-brackets + absolute notes)
+       .corner-notes          — labels in the reserved strips
+       .viewport-body         — real page content, pushed in by margin
+   Top strip is modest; bottom strip is wider so COORD / 01 never collide. */
+.viewport-frame {
+  --note-strip-top: 40px;
+  --note-strip-bottom: 56px;
+  position: relative;
+  box-sizing: border-box;
+}
+.viewport-body {
+  /* Content sits between the two strips — margins, not padding, so
+     backgrounds of .hero / .page-panel cannot paint under the labels. */
+  margin-top: var(--note-strip-top);
+  margin-bottom: var(--note-strip-bottom);
+  position: relative;
+  z-index: 1;
+}
+/* Corner L-brackets stay on the outer edge of the frame. */
 .frame {
   position: absolute;
   width: 15px;
@@ -60,7 +80,7 @@
   pointer-events: none;
   z-index: 5;
 }
-/* replaced pseudo-element corner labels with real DOM elements for reliability */
+/* Notes sit in the empty strips above/below .viewport-body. */
 .corner-notes {
   position: absolute;
   inset: 0;
@@ -75,34 +95,43 @@
     8px 'DM Mono',
     monospace;
   color: #c0c9cf;
-  background: rgba(10, 12, 14, 0.48);
+  background: rgba(10, 12, 14, 0.55);
   border-radius: 2px;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
   max-width: 38vw;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 .corner-note.tl {
-  left: 20px;
-  top: 12px;
+  left: 18px;
+  top: 12px; /* inside top strip */
 }
 .corner-note.tr {
-  right: 20px;
+  right: 18px;
   top: 12px;
   text-align: right;
 }
 .corner-note.bl {
-  left: 20px;
-  bottom: 12px;
+  left: 18px;
+  bottom: 16px; /* inside wider bottom strip */
 }
 .corner-note.br {
-  right: 20px;
-  bottom: 12px;
+  right: 18px;
+  bottom: 16px;
   text-align: right;
 }
 
-/* hide decorative corner notes on small screens */
+/* hide decorative corner notes on small screens — also drop the strips */
 @media (max-width: 900px) {
+  .viewport-frame {
+    --note-strip-top: 0px;
+    --note-strip-bottom: 0px;
+  }
+  .viewport-body {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
   .corner-note {
     display: none;
   }

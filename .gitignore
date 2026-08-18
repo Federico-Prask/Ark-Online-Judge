@@ -2,6 +2,18 @@ node_modules/
 dist/
 *.local
 
-# backend
+# backend runtime data
 server/data/
 server/node_modules/
+
+# tooling caches
+.cache/
+.vite/
+.vite-plus/
+.npm/
+.pnpm-store/
+
+# do not commit npm lockfiles (this project uses pnpm / vp)
+package-lock.json
+server/package-lock.json
+npm-shrinkwrap.json

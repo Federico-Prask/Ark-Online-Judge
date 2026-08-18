@@ -23,6 +23,7 @@ import './style.css'
 import './dark.css'
 import './ark-fixes.css'
 import './auth.css'
+import './pages.css'
 library.add(
   faArrowRight,
   faChartLine,

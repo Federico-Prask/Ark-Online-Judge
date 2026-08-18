@@ -1,66 +1,31 @@
-// Auth routes: register / login / logout / me, plus the requireAuth middleware.
+// Auth routes: register / login / logout / me, plus cookie helpers.
 import { Router } from 'express'
 import { db } from './db.js'
 import { hashPassword, verifyPassword } from './passwords.js'
-import { createSession, destroySession, getUserByToken, SESSION_TTL_MS } from './sessions.js'
+import { createSession, destroySession, SESSION_TTL_MS } from './sessions.js'
+import { COOKIE_NAME, getToken, requireAuth, publicUser } from './middleware.js'
 
-export const COOKIE_NAME = 'arkoj_session'
+export { COOKIE_NAME }
 
 const USERNAME_RE = /^[A-Za-z0-9_]{3,32}$/
 const MIN_PASSWORD_LEN = 6
 
-function parseCookies(header = '') {
-  const out = {}
-  for (const part of header.split(';')) {
-    const i = part.indexOf('=')
-    if (i > 0) {
-      try {
-        out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim())
-      } catch {
-        /* malformed cookie value: ignore */
-      }
-    }
-  }
-  return out
-}
-
-function getToken(req) {
-  const auth = req.headers.authorization
-  if (auth && auth.startsWith('Bearer ')) return auth.slice(7).trim()
-  return parseCookies(req.headers.cookie)[COOKIE_NAME] || null
-}
-
-function publicUser(u) {
-  return {
-    id: u.id,
-    username: u.username,
-    nickname: u.nickname || u.username,
-    avatar: u.avatar || '',
-    bio: u.bio || '',
-    role: u.role,
-    created_at: u.created_at,
-  }
-}
-
 function attachSession(res, token) {
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: SESSION_TTL_MS,
-    path: '/',
-  })
+  // Single Set-Cookie header (avoid duplicates from append + res.cookie).
+  const secure = process.env.NODE_ENV === 'production'
+  const maxAgeSec = Math.floor(SESSION_TTL_MS / 1000)
+  const parts = [
+    `${COOKIE_NAME}=${encodeURIComponent(token)}`,
+    'Path=/',
+    `Max-Age=${maxAgeSec}`,
+    'HttpOnly',
+    'SameSite=Lax',
+  ]
+  if (secure) parts.push('Secure')
+  res.setHeader('Set-Cookie', parts.join('; '))
 }
 
-/** Auth gate: sets req.user (and req.token) or answers 401. */
-export function requireAuth(req, res, next) {
-  const token = getToken(req)
-  const user = getUserByToken(token)
-  if (!user) return res.status(401).json({ error: '未登录或登录已过期' })
-  req.user = user
-  req.token = token
-  next()
-}
+export { requireAuth, publicUser, getToken }
 
 export const authRouter = Router()
 

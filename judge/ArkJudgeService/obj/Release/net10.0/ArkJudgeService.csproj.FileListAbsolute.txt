@@ -1,0 +1,7 @@
+/home/newuser1/Ark-Online-Judge/judge/ArkJudgeService/obj/Release/net10.0/rpswa.dswa.cache.json
+/home/newuser1/Ark-Online-Judge/judge/ArkJudgeService/obj/Release/net10.0/ArkJudgeService.GeneratedMSBuildEditorConfig.editorconfig
+/home/newuser1/Ark-Online-Judge/judge/ArkJudgeService/obj/Release/net10.0/ArkJudgeService.AssemblyInfoInputs.cache
+/home/newuser1/Ark-Online-Judge/judge/ArkJudgeService/obj/Release/net10.0/ArkJudgeService.AssemblyInfo.cs
+/home/newuser1/Ark-Online-Judge/judge/ArkJudgeService/obj/Release/net10.0/ArkJudgeService.csproj.CoreCompileInputs.cache
+/home/newuser1/Ark-Online-Judge/judge/ArkJudgeService/obj/Release/net10.0/ArkJudgeService.MvcApplicationPartsAssemblyInfo.cache
+/home/newuser1/Ark-Online-Judge/judge/ArkJudgeService/obj/Release/net10.0/ArkJudgeService.sourcelink.json

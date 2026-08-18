@@ -5,6 +5,13 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { authRouter } from './auth.js'
+import { problemsRouter } from './problems.js'
+import { submissionsRouter } from './submissions.js'
+import { listsRouter } from './lists.js'
+import { contestsRouter } from './contests.js'
+import { usersRouter } from './users.js'
+import { discussionsRouter } from './discussions.js'
+import { statsRouter } from './stats.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -12,9 +19,21 @@ export function createApp() {
   const app = express()
   app.disable('x-powered-by')
 
+  // Allow common local + preview origins. ARKOJ_ORIGIN can pin a single origin.
+  const pinned = process.env.ARKOJ_ORIGIN
   app.use(
     cors({
-      origin: process.env.ARKOJ_ORIGIN || 'http://localhost:5173',
+      origin(origin, cb) {
+        if (!origin) return cb(null, true) // curl / same-origin
+        if (pinned) return cb(null, origin === pinned)
+        if (
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+          /\.e2b\.app$/.test(origin)
+        ) {
+          return cb(null, true)
+        }
+        return cb(null, false)
+      },
       credentials: true,
     }),
   )
@@ -25,6 +44,13 @@ export function createApp() {
     res.json({ ok: true, service: 'arkoj-server', time: new Date().toISOString() })
   })
   app.use('/api/auth', authRouter)
+  app.use('/api/problems', problemsRouter)
+  app.use('/api/submissions', submissionsRouter)
+  app.use('/api/lists', listsRouter)
+  app.use('/api/contests', contestsRouter)
+  app.use('/api/users', usersRouter)
+  app.use('/api/discussions', discussionsRouter)
+  app.use('/api/stats', statsRouter)
 
   // --- Static frontend (production build, if present) ---
   const dist = path.join(__dirname, '..', '..', 'dist')
