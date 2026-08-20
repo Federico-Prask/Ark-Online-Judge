@@ -3,6 +3,7 @@
 LibreOJ/
 dist/
 
-ark-backend/node_modules
-ark-frontend/node_modules
-ark-backend/dist
+ark-frontend/node_modules/
+ark-frontend/dist/
+ark-backend/node_modules/
+ark-backend/data/
