@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArkOJ — 在线评测系统</title>
+<style>
+  :root{
+    --ink:#16181D; --ink-soft:#5C6470; --ink-faint:#9AA3B0;
+    --paper:#F5F6F8; --line:#DADEE5; --line-soft:#E7EAEF;
+    --card:#FFFFFF;
+    --accent:#9DC1F1; --accent-deep:#5E8FD4; --accent-ink:#28527F;
+    --red:#E0433D; --green:#2E9E6B; --amber:#E3A63B;
+    --mono: ui-monospace,'SF Mono','Cascadia Code','JetBrains Mono',Consolas,'Courier New',monospace;
+    --sans:'Helvetica Neue',Arial,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--sans);background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--accent);color:var(--ink)}
+
+  /* ---- 背景：仅一层细网格 + 顶部一组极淡等高线 ---- */
+  .bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),
+                     linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:56px 56px;opacity:.5}
+  .bg-contours{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+  /* ---- 四角：只保留 L 型角标 + 两条顶部单行微文字 ---- */
+  .hud{position:fixed;z-index:30;font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--ink-faint);pointer-events:none}
+  .hud.tl{top:10px;left:14px}
+  .hud.tr{top:10px;right:14px}
+  .corner{position:fixed;z-index:30;width:14px;height:14px;pointer-events:none}
+  .corner::before,.corner::after{content:'';position:absolute;background:var(--ink)}
+  .corner::before{width:14px;height:1.5px}
+  .corner::after{width:1.5px;height:14px}
+  .corner.tl{top:6px;left:6px}.corner.tr{top:6px;right:6px;transform:scaleX(-1)}
+  .corner.bl{bottom:6px;left:6px;transform:scaleY(-1)}.corner.br{bottom:6px;right:6px;transform:scale(-1)}
+
+  .page{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:0 36px}
+
+  /* ---- 顶栏 ---- */
+  header{display:flex;align-items:center;justify-content:space-between;padding:40px 0 16px;border-bottom:1px solid var(--line)}
+  .logo{display:flex;align-items:baseline;gap:12px}
+  .logo b{font-weight:900;font-size:20px;letter-spacing:-.02em}
+  .logo b i{font-style:normal;color:var(--accent-deep)}
+  .logo .meta{font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.12em}
+  nav{display:flex;gap:32px;font-size:13px;letter-spacing:.06em}
+  nav a{color:var(--ink-soft);text-decoration:none;position:relative;padding:4px 0}
+  nav a:hover{color:var(--ink)}
+  nav a.active{color:var(--ink);font-weight:700}
+  nav a.active::after{content:'';position:absolute;left:0;right:0;bottom:-3px;height:3px;background:var(--accent)}
+  .hdr-right{display:flex;align-items:center;gap:12px}
+  .demo-toggle{font-family:var(--mono);font-size:10px;letter-spacing:.08em;cursor:pointer;background:none;border:1px dashed var(--ink-faint);color:var(--ink-soft);padding:6px 10px}
+  .demo-toggle:hover{border-color:var(--ink);color:var(--ink)}
+  .btn{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;cursor:pointer;padding:8px 18px;border:1px solid var(--ink);background:transparent;color:var(--ink);text-decoration:none}
+  .btn:hover{background:var(--ink);color:var(--paper)}
+  .btn.primary{background:var(--ink);color:#fff;border:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);padding:9px 26px 9px 18px}
+  .btn.primary:hover{background:var(--accent-deep)}
+  .btn.accent{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+  .btn.accent:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+
+  /* ---- 问候区：左右两栏结构，右栏时钟与数据对齐 ---- */
+  .hero{display:grid;grid-template-columns:1fr auto;gap:48px;padding:84px 0 48px;align-items:start}
+  .hero .kicker{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--ink-soft);display:flex;align-items:center;gap:10px;margin-bottom:28px}
+  .hero .kicker::before{content:'';width:32px;height:1px;background:var(--ink)}
+  .hero .kicker .tag{border:1px solid var(--ink);padding:2px 7px;font-size:9px}
+  .hero h1{font-size:clamp(52px,7.6vw,96px);font-weight:900;line-height:1;letter-spacing:-.03em;
+    text-shadow:1.5px 0 rgba(224,67,61,.12),-1.5px 0 rgba(94,143,212,.16)}
+  .hero .l2{margin-top:16px;display:flex;align-items:center;gap:16px}
+  .hero .l2 .block{display:inline-block;background:var(--accent);color:var(--ink);font-weight:900;
+    font-size:clamp(24px,3vw,38px);padding:6px 22px;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%)}
+  .hero .l2 .block.dark{background:var(--ink);color:#fff}
+  .hero .sub-en{font-family:var(--mono);font-size:10px;letter-spacing:.28em;color:var(--ink-faint);margin-top:20px;text-transform:uppercase}
+  .hero .cta{margin-top:36px;display:flex;gap:14px}
+
+  /* 右栏：时钟 + 数据，一条竖线分隔 */
+  .hero-right{border-left:1px solid var(--line);padding-left:36px;min-width:250px;position:relative}
+  .hero-right::after{content:'';position:absolute;left:-3px;bottom:-1px;width:5px;height:5px;background:var(--accent-deep)}
+  .hero-right .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--ink-faint)}
+  .hero-right .clock{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:.05em;margin:6px 0 2px}
+  .hero-right .clock .cur{display:inline-block;width:8px;height:16px;background:var(--accent-deep);vertical-align:-1px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .hero-right .date{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--ink-soft)}
+  .stats{display:grid;grid-template-columns:1fr 1fr;margin-top:26px;border:1px solid var(--line);background:var(--card)}
+  .stats .cell{padding:12px 16px;border:1px solid var(--line-soft);margin:-0.5px}
+  .stats .v{font-size:22px;font-weight:900}
+  .stats .v em{font-style:normal;color:var(--accent-deep)}
+  .stats .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;color:var(--ink-faint);margin-top:3px}
+
+  /* ---- 状态线：单线 + 三个准星 + 一小段主题色 ---- */
+  .axis{position:relative;margin:8px 0 40px;height:14px}
+  .axis::before{content:'';position:absolute;left:0;right:0;top:7px;height:1px;background:var(--line)}
+  .axis .seg{position:absolute;left:0;width:140px;top:6.5px;height:2px;background:var(--accent-deep)}
+  .axis .mark{position:absolute;top:2px;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--ink-faint)}
+  .axis .mark::before{content:'+';color:var(--accent-deep);margin-right:6px}
+  .axis .m1{left:180px}.axis .m2{right:4px}
+
+  /* ---- 卡片 ---- */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding-bottom:64px}
+  .card{background:var(--card);border:1px solid var(--line);position:relative;padding:18px 20px 14px;min-height:220px;display:flex;flex-direction:column}
+  .card::before,.card::after{content:'';position:absolute;width:10px;height:10px;pointer-events:none}
+  .card::before{top:-1px;left:-1px;border-top:1.5px solid var(--ink);border-left:1.5px solid var(--ink)}
+  .card::after{bottom:-1px;right:-1px;border-bottom:1.5px solid var(--ink);border-right:1.5px solid var(--ink)}
+  .card-head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--line-soft);padding-bottom:10px;margin-bottom:12px}
+  .card-head .t{font-weight:800;font-size:14px}
+  .card-head .t .br{color:var(--accent-deep);font-family:var(--mono);font-weight:400}
+  .card-head .en{font-family:var(--mono);font-size:8px;letter-spacing:.22em;color:var(--ink-faint);margin-left:8px}
+  .card-head .idx{font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.2em}
+  .card .foot{margin-top:auto;padding-top:12px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.14em}
+  .link{font-family:var(--mono);font-size:10px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--accent-deep);padding-bottom:1px}
+  .link:hover{color:var(--accent-deep)}
+
+  .row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line-soft);font-size:13px}
+  .row:last-of-type{border-bottom:none}
+  .row .pid{font-family:var(--mono);font-size:11px;color:var(--accent-deep);margin-right:9px}
+  .row .name{font-weight:600}
+  .row .dim{font-family:var(--mono);font-size:9px;color:var(--ink-faint);margin-left:8px}
+  .chip{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:3px 7px;border:1px solid}
+  .chip.ac{color:var(--green);border-color:var(--green);background:rgba(46,158,107,.07)}
+  .chip.wa{color:var(--red);border-color:var(--red);background:rgba(224,67,61,.06)}
+  .chip.tle{color:var(--amber);border-color:var(--amber);background:rgba(227,166,59,.08)}
+  .chip.jdg{color:var(--accent-ink);border-color:var(--accent-deep);background:rgba(157,193,241,.18)}
+  .chip.gray{color:var(--ink-soft);border-color:var(--ink-faint)}
+
+  .daily .pid-line{font-family:var(--mono);font-size:10px;color:var(--accent-deep);letter-spacing:.16em}
+  .daily .big{font-size:22px;font-weight:900;margin:6px 0 8px}
+  .daily .desc{font-size:12px;color:var(--ink-soft);line-height:1.8;margin-bottom:14px}
+  .tags{display:flex;gap:6px;margin-bottom:16px;align-items:center}
+  .tags span{font-family:var(--mono);font-size:9px;border:1px solid var(--line);padding:2px 7px;color:var(--ink-soft)}
+  .tags .stars{border:none;color:var(--accent-deep);letter-spacing:2px}
+
+  .step{display:flex;gap:14px;padding:9px 0;border-bottom:1px dashed var(--line-soft)}
+  .step:last-of-type{border-bottom:none}
+  .step .n{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent);line-height:1;min-width:32px}
+  .step .t{font-size:13px;font-weight:700}
+  .step .d{font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.1em;margin-top:3px}
+
+  table.mini{width:100%;border-collapse:collapse;font-size:11px}
+  table.mini td{padding:8px 6px;border-bottom:1px dashed var(--line-soft);font-family:var(--mono)}
+  table.mini tr:last-child td{border-bottom:none}
+  table.mini .t-time{color:var(--ink-faint);font-size:10px}
+
+  .contest{padding:10px 0;border-bottom:1px dashed var(--line-soft)}
+  .contest:last-of-type{border-bottom:none}
+  .contest .c-top{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+  .live{width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1.4s infinite}
+  @keyframes pulse{50%{opacity:.25}}
+  .contest .c-sub{font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.12em;margin-top:4px}
+  .countdown{color:var(--accent-ink);font-weight:700}
+
+  .note{padding:9px 0;border-bottom:1px dashed var(--line-soft);font-size:12.5px;display:flex;gap:10px}
+  .note:last-of-type{border-bottom:none}
+  .note .dt{font-family:var(--mono);font-size:10px;color:var(--ink-faint);flex:none;margin-top:1px}
+  .note.alert .txt::before{content:'[!] ';color:var(--red);font-family:var(--mono)}
+
+  .kv{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;padding:7px 0;border-bottom:1px dashed var(--line-soft)}
+  .kv:last-of-type{border-bottom:none}
+  .kv .k{color:var(--ink-faint);letter-spacing:.1em}
+  .kv .v{font-weight:700}
+  .kv .v.on{color:var(--green)}
+  .kv .v.on::before{content:'●';font-size:8px;margin-right:6px}
+
+  .rank-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line-soft);font-size:13px}
+  .rank-row:last-of-type{border-bottom:none}
+  .rank-row .no{font-family:var(--mono);font-size:11px;color:var(--ink-faint);width:26px}
+  .rank-row .who{font-weight:700;flex:1}
+  .rank-row .val{font-family:var(--mono);font-size:11px;color:var(--accent-deep)}
+  .rank-row.me{background:rgba(157,193,241,.22);margin:2px -10px 0;padding:8px 10px;border:1px solid var(--accent)}
+
+  .about p{font-size:13px;line-height:2;color:var(--ink-soft)}
+  .about .en{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--ink-faint);margin-top:12px;line-height:1.9}
+
+  footer{border-top:1px solid var(--line);padding:24px 0 44px;display:flex;justify-content:space-between;align-items:flex-end}
+  footer .mono{font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--ink-faint);line-height:2}
+  .barcode{width:140px;height:24px;opacity:.85;
+    background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 9px,var(--ink) 9px 12px,transparent 12px 14px)}
+  .barcode-wrap{text-align:right}
+  .barcode-wrap .code{font-family:var(--mono);font-size:9px;letter-spacing:.42em;margin-top:5px;color:var(--ink-soft)}
+
+  .hidden{display:none !important}
+  @media (max-width:980px){
+    .grid{grid-template-columns:1fr 1fr}
+    .hero{grid-template-columns:1fr}
+    .hero-right{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:20px}
+    nav{display:none}
+  }
+  @media (max-width:640px){
+    .grid{grid-template-columns:1fr}
+    .page{padding:0 20px}
+  }
+</style>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <svg class="bg-contours" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+    <g fill="none" stroke="#E2E6EC" stroke-width="1">
+      <path d="M-60,120 C 240,80 460,180 720,140 S 1180,80 1520,150"/>
+      <path d="M-60,155 C 240,115 470,215 720,175 S 1180,115 1520,185"/>
+      <path d="M-60,190 C 250,150 480,250 720,210 S 1190,150 1520,220"/>
+    </g>
+    <g fill="none" stroke="#9DC1F1" stroke-width="1" opacity=".45">
+      <path d="M-60,172 C 245,132 475,232 720,192 S 1185,132 1520,202"/>
+    </g>
+  </svg>
+
+  <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+  <div class="hud tl">ARK.SYS // TERMINAL-01</div>
+  <div class="hud tr">BUILD 2026.08.19</div>
+
+  <div class="page">
+
+    <header>
+      <div class="logo"><b>ARK<i>OJ</i></b><span class="meta">// ONLINE JUDGE · v0.1.0</span></div>
+      <nav>
+        <a href="#" class="active">首页</a>
+        <a href="#">题库</a>
+        <a href="#">比赛</a>
+        <a href="#">提交</a>
+        <a href="#">排行</a>
+        <a href="#">讨论</a>
+      </nav>
+      <div class="hdr-right">
+        <button class="demo-toggle" id="demoToggle" onclick="toggleLogin()">[ 演示·未登录 ]</button>
+        <span id="hdrLogin">
+          <a class="btn" href="javascript:void(0)" onclick="setLogin(true)">登录</a>
+          <a class="btn primary" href="javascript:void(0)" onclick="setLogin(true)">注册</a>
+        </span>
+        <span id="hdrUser" class="hidden" style="font-family:var(--mono);font-size:11px">
+          <span style="color:var(--ink-faint)">UID 10001 //</span> <b>admin</b>
+          &nbsp;<a class="link" href="javascript:void(0)" onclick="setLogin(false)">登出</a>
+        </span>
+      </div>
+    </header>
+
+    <!-- ============ 问候区 ============ -->
+    <section class="hero">
+      <div>
+        <div class="kicker"><span class="tag">公开测试</span><span id="kickerText">ARKOJ SYSTEM · WELCOME PROTOCOL</span></div>
+
+        <div id="heroOut">
+          <h1>欢迎来到ArkOJ</h1>
+          <div class="l2"><span class="block">算法竞赛人</span></div>
+          <div class="sub-en">Welcome, competitive programmer</div>
+          <div class="cta">
+            <a class="btn primary" href="#">开始做题 →</a>
+            <a class="btn" href="#">注册账号</a>
+          </div>
+        </div>
+
+        <div id="heroIn" class="hidden">
+          <h1 id="greetTitle">早上好</h1>
+          <div class="l2"><span class="block dark">admin</span></div>
+          <div class="sub-en">// UID 10001 · Session Active</div>
+          <div class="cta">
+            <a class="btn primary" href="#">继续做题 →</a>
+            <a class="btn" href="#">个人主页</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="lbl">LOCAL.TIME</div>
+        <div class="clock"><span id="clock">--:--:--</span><span class="cur"></span></div>
+        <div class="date" id="dateLine">2026.08.19 · WED</div>
+        <div class="stats" id="statsOut">
+          <div class="cell"><div class="v">1,204</div><div class="k">PROBLEMS 题库</div></div>
+          <div class="cell"><div class="v">8,431</div><div class="k">USERS 用户</div></div>
+          <div class="cell"><div class="v">3,847</div><div class="k">TODAY 提交</div></div>
+          <div class="cell"><div class="v"><em>2</em></div><div class="k">NODES 在线</div></div>
+        </div>
+        <div class="stats hidden" id="statsIn">
+          <div class="cell"><div class="v">128</div><div class="k">SOLVED 已解决</div></div>
+          <div class="cell"><div class="v">402</div><div class="k">SUBMITS 提交</div></div>
+          <div class="cell"><div class="v"><em>1847</em></div><div class="k">RATING ▲24</div></div>
+          <div class="cell"><div class="v">12<span style="font-size:12px;font-weight:600"> 天</span></div><div class="k">STREAK 连续</div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="axis">
+      <div class="seg"></div>
+      <span class="mark m1">MODULE.GRID</span>
+      <span class="mark m2">// ARKOJ.HOME</span>
+    </div>
+
+    <!-- ============ 模块：未登录 ============ -->
+    <section class="grid" id="gridOut">
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 快速开始 <span class="br">]</span></span><span class="en">QUICK START</span></div><div class="idx">01</div></div>
+        <div class="step"><div class="n">01</div><div><div class="t">注册账号</div><div class="d">// CREATE ACCOUNT</div></div></div>
+        <div class="step"><div class="n">02</div><div><div class="t">选择第一题</div><div class="d">// PICK P1001</div></div></div>
+        <div class="step"><div class="n">03</div><div><div class="t">提交代码</div><div class="d">// GET VERDICT</div></div></div>
+        <div class="foot"><span><a class="link" href="#">立即开始 →</a></span><span>30 SEC</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 热门题目 <span class="br">]</span></span><span class="en">POPULAR</span></div><div class="idx">02</div></div>
+        <div class="row"><span><span class="pid">P1001</span><span class="name">源石计数</span><span class="dim">入门</span></span><span class="chip ac">2.1K AC</span></div>
+        <div class="row"><span><span class="pid">P1002</span><span class="name">天灾信标定位</span><span class="dim">普及</span></span><span class="chip ac">1.4K AC</span></div>
+        <div class="row"><span><span class="pid">P1007</span><span class="name">轨道测绘</span><span class="dim">提高</span></span><span class="chip ac">863 AC</span></div>
+        <div class="row"><span><span class="pid">P1019</span><span class="name">协议回收</span><span class="dim">省选</span></span><span class="chip ac">217 AC</span></div>
+        <div class="foot"><span><a class="link" href="#">进入题库 →</a></span><span>1,204 TOTAL</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 近期赛事 <span class="br">]</span></span><span class="en">CONTESTS</span></div><div class="idx">03</div></div>
+        <div class="contest">
+          <div class="c-top"><span class="live"></span>周末新手赛 #12 <span class="chip jdg">进行中</span></div>
+          <div class="c-sub">ACM · 5 题 · 剩余 01:23:44</div>
+        </div>
+        <div class="contest">
+          <div class="c-top">双周算法挑战赛 #08 <span class="chip gray">即将开始</span></div>
+          <div class="c-sub">OI · 开始于 <span class="countdown">2天12时00分</span></div>
+        </div>
+        <div class="foot"><span><a class="link" href="#">全部比赛 →</a></span><span>SEASON IV</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 平台状态 <span class="br">]</span></span><span class="en">STATUS</span></div><div class="idx">04</div></div>
+        <div class="kv"><span class="k">JUDGE.NODE-01</span><span class="v on">ONLINE</span></div>
+        <div class="kv"><span class="k">JUDGE.NODE-02</span><span class="v on">ONLINE</span></div>
+        <div class="kv"><span class="k">QUEUE 队列</span><span class="v">0</span></div>
+        <div class="kv"><span class="k">UPTIME</span><span class="v">99.98%</span></div>
+        <div class="foot"><span>STATUS.OK</span><span>3,847 TODAY</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 讨论精选 <span class="br">]</span></span><span class="en">DISCUSS</span></div><div class="idx">05</div></div>
+        <div class="note"><span class="dt">14:02</span><span>题解｜P1007 轨道测绘的三种做法</span></div>
+        <div class="note"><span class="dt">11:47</span><span>求问 P1019 为什么卡常？附代码</span></div>
+        <div class="note"><span class="dt">昨天</span><span>新手赛 #12 赛后总结 & 补题清单</span></div>
+        <div class="foot"><span><a class="link" href="#">进入讨论 →</a></span><span>247 REPLIES</span></div>
+      </div>
+
+      <div class="card about">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 关于 ARKOJ <span class="br">]</span></span><span class="en">ABOUT</span></div><div class="idx">06</div></div>
+        <p>ArkOJ 是一个<b style="color:var(--ink)">为算法竞赛人而建</b>的在线评测平台。克制的界面、快速的评测、干净的题面——把一切注意力留给题目本身。</p>
+        <div class="en">// FOCUS ON THE PROBLEM.<br>// NOTHING ELSE.</div>
+        <div class="foot"><span><a class="link" href="#">了解更多 →</a></span><span>EST. 2026</span></div>
+      </div>
+    </section>
+
+    <!-- ============ 模块：已登录 ============ -->
+    <section class="grid hidden" id="gridIn">
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 继续挑战 <span class="br">]</span></span><span class="en">RESUME</span></div><div class="idx">01</div></div>
+        <div class="row"><span><span class="pid">P1024</span><span class="name">向渊而行</span><span class="dim">提高</span></span><span><span class="chip wa">WA ×2</span> <a class="link" href="#">继续</a></span></div>
+        <div class="row"><span><span class="pid">P1031</span><span class="name">信号中继</span><span class="dim">普及</span></span><span><span class="chip tle">TLE ×1</span> <a class="link" href="#">继续</a></span></div>
+        <div class="row"><span><span class="pid">P1036</span><span class="name">边界协议</span><span class="dim">入门</span></span><span><span class="chip gray">未提交</span> <a class="link" href="#">打开</a></span></div>
+        <div class="foot"><span>距 130 AC 还差 <b style="color:var(--ink)">3</b> 题</span><span>RESUME</span></div>
+      </div>
+
+      <div class="card daily">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 每日一题 <span class="br">]</span></span><span class="en">DAILY</span></div><div class="idx">02</div></div>
+        <div class="pid-line">P1042 // 2026.08.19</div>
+        <div class="big">深空回声</div>
+        <div class="tags"><span>图论</span><span>最短路</span><span class="stars">★★★☆☆</span></div>
+        <div class="desc">给定一张带权有向图，求在至多一次"逆向通行"限制下的最短路径……</div>
+        <a class="btn accent" href="#" style="align-self:flex-start">立即挑战 →</a>
+        <div class="foot"><span>今日 612 人完成</span><span>DAILY</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 赛事日程 <span class="br">]</span></span><span class="en">CONTESTS</span></div><div class="idx">03</div></div>
+        <div class="contest">
+          <div class="c-top"><span class="live"></span>周末新手赛 #12 <span class="chip jdg">进行中</span></div>
+          <div class="c-sub">你已参加 · 排名 #37 · 已解 3/5</div>
+        </div>
+        <div class="contest">
+          <div class="c-top">双周算法挑战赛 #08 <span class="chip ac">已报名</span></div>
+          <div class="c-sub">开始于 <span class="countdown">2天12时00分</span></div>
+        </div>
+        <div class="foot"><span><a class="link" href="#">全部比赛 →</a></span><span>SEASON IV</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 最近提交 <span class="br">]</span></span><span class="en">SUBMISSIONS</span></div><div class="idx">04</div></div>
+        <table class="mini">
+          <tr><td>#48213</td><td>P1024</td><td>C++17</td><td><span class="chip wa">解答错误</span></td><td class="t-time">14:32</td></tr>
+          <tr><td>#48207</td><td>P1024</td><td>C++17</td><td><span class="chip wa">解答错误</span></td><td class="t-time">14:11</td></tr>
+          <tr><td>#48192</td><td>P1031</td><td>C++17</td><td><span class="chip tle">时间超限</span></td><td class="t-time">11:58</td></tr>
+          <tr><td>#48170</td><td>P1018</td><td>Python 3</td><td><span class="chip ac">通过</span></td><td class="t-time">昨天</td></tr>
+        </table>
+        <div class="foot"><span><a class="link" href="#">全部提交 →</a></span><span>402 TOTAL</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 公告 <span class="br">]</span></span><span class="en">NOTICE</span></div><div class="idx">05</div></div>
+        <div class="note alert"><span class="dt">今天</span><span class="txt">评测集群扩容完成，峰值排队降至 3s</span></div>
+        <div class="note"><span class="dt">昨天</span><span class="txt">新手入门路线已发布：P1001 → P1040</span></div>
+        <div class="note"><span class="dt">08-16</span><span class="txt">双周赛 #08 报名开启（OI 赛制）</span></div>
+        <div class="foot"><span><a class="link" href="#">全部公告 →</a></span><span>/34</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><span class="t"><span class="br">[</span> 排行榜 <span class="br">]</span></span><span class="en">RANKING</span></div><div class="idx">06</div></div>
+        <div class="rank-row"><span class="no">01</span><span class="who">Endministrator</span><span class="val">2912</span></div>
+        <div class="rank-row"><span class="no">02</span><span class="who">北落师门</span><span class="val">2847</span></div>
+        <div class="rank-row"><span class="no">03</span><span class="who">Originium_</span><span class="val">2801</span></div>
+        <div class="rank-row me"><span class="no">1024</span><span class="who">admin（你）</span><span class="val">1847 ▲24</span></div>
+        <div class="foot"><span><a class="link" href="#">完整榜单 →</a></span><span>8,431 USERS</span></div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="mono">ARKOJ © 2026 · OPEN JUDGE SYSTEM<br>NODE SH-EAST-01 · BUILD v0.1.0</div>
+      <div class="mono" style="text-align:center">[ 题库 ] [ 比赛 ] [ 提交 ] [ 排行 ] [ 讨论 ] [ 关于 ]<br>// FOCUS ON THE PROBLEM.</div>
+      <div class="barcode-wrap"><div class="barcode"></div><div class="code">ARK-OJ-10001-2026</div></div>
+    </footer>
+  </div>
+
+<script>
+  let loggedIn = false;
+  function setLogin(v){
+    loggedIn = v;
+    document.getElementById('heroOut').classList.toggle('hidden', v);
+    document.getElementById('heroIn').classList.toggle('hidden', !v);
+    document.getElementById('gridOut').classList.toggle('hidden', v);
+    document.getElementById('gridIn').classList.toggle('hidden', !v);
+    document.getElementById('hdrLogin').classList.toggle('hidden', v);
+    document.getElementById('hdrUser').classList.toggle('hidden', !v);
+    document.getElementById('statsOut').classList.toggle('hidden', v);
+    document.getElementById('statsIn').classList.toggle('hidden', !v);
+    document.getElementById('demoToggle').textContent = v ? '[ 演示·已登录 ]' : '[ 演示·未登录 ]';
+    document.getElementById('kickerText').textContent = v
+      ? 'USER.PROFILE · SESSION ACTIVE · UID 10001'
+      : 'ARKOJ SYSTEM · WELCOME PROTOCOL';
+    if (v) renderGreeting();
+  }
+  function toggleLogin(){ setLogin(!loggedIn); }
+  function greetName(h){
+    if (h < 5) return '深夜'; if (h < 9) return '早上'; if (h < 12) return '上午';
+    if (h < 14) return '中午'; if (h < 18) return '下午'; if (h < 23) return '晚上';
+    return '深夜';
+  }
+  function renderGreeting(){
+    document.getElementById('greetTitle').textContent = greetName(new Date().getHours()) + '好';
+  }
+  function tick(){
+    const now = new Date(), p = n => String(n).padStart(2,'0');
+    document.getElementById('clock').textContent = p(now.getHours())+':'+p(now.getMinutes())+':'+p(now.getSeconds());
+    const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    document.getElementById('dateLine').textContent =
+      now.getFullYear()+'.'+p(now.getMonth()+1)+'.'+p(now.getDate())+' · '+days[now.getDay()];
+    if (loggedIn) renderGreeting();
+  }
+  setInterval(tick, 1000); tick();
+</script>
+</body>
+</html>

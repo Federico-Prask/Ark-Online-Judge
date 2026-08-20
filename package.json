@@ -1,31 +1,5 @@
 {
-  "name": "arkoj",
-  "version": "0.2.0",
-  "private": true,
-  "type": "module",
-  "packageManager": "pnpm@10.12.1",
-  "scripts": {
-    "dev": "vp dev",
-    "build": "vp build",
-    "check": "vp check",
-    "fmt": "vp fmt",
-    "start": "pnpm --dir server start",
-    "server": "pnpm --dir server start",
-    "server:dev": "pnpm --dir server dev",
-    "server:install": "pnpm --dir server install"
-  },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^6.7.2",
-    "@fortawesome/free-solid-svg-icons": "^6.7.2",
-    "@fortawesome/vue-fontawesome": "^3.0.8",
-    "@vitejs/plugin-vue": "^5.2.1",
-    "tailwindcss": "^3.4.17",
-    "vue": "^3.5.13"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "typescript": "^5.7.2",
-    "vite-plus": "^0.2.9"
+    "puppeteer": "^24.43.1"
   }
 }

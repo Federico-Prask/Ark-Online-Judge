@@ -1,0 +1,212 @@
+@import 'tailwindcss';
+
+/* ---------- HarmonyOS Sans SC（自托管，400/700/900） ---------- */
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('/fonts/HarmonyOS_Sans_SC_Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('/fonts/HarmonyOS_Sans_SC_Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('/fonts/HarmonyOS_Sans_SC_Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+/* 判定横幅用工业窄体 */
+@font-face {
+  font-family: 'Aldrich';
+  src: url('/fonts/Aldrich.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-ink: #16181d;
+  --color-ink-soft: #5c6470;
+  --color-ink-faint: #9aa3b0;
+  --color-paper: #f5f6f8;
+  --color-line: #dadee5;
+  --color-line-soft: #e7eaef;
+  --color-card: #ffffff;
+  --color-accent: #9dc1f1;
+  --color-accent-deep: #5e8fd4;
+  --color-accent-ink: #28527f;
+  --color-signal-red: #e0433d;
+  --color-signal-green: #2e9e6b;
+  --color-signal-amber: #e3a63b;
+  --color-contour: #e2e6ec;
+  /* 高亮色块上的文字：两种模式都保持深色，不随主题翻转 */
+  --color-on-accent: #10141a;
+
+  --font-sans: 'HarmonyOS Sans SC', 'Helvetica Neue', Arial, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono',
+    Consolas, 'Courier New', monospace;
+
+  /* 自定义断点：1000px 以下为紧凑形态（导航纯图标、数据格隐藏英文等） */
+  --breakpoint-kilo: 62.5rem;
+  /* 仅 footer 使用：880px 以下逐行堆叠 */
+  --breakpoint-tab: 55rem;
+}
+
+/* ---------- 深色模式：令牌整体翻转 ---------- */
+.dark {
+  --color-ink: #e9ecf1;
+  --color-ink-soft: #9aa3b0;
+  --color-ink-faint: #6a7482;
+  --color-paper: #0e1013;
+  --color-line: #2a2f38;
+  --color-line-soft: #1e222a;
+  --color-card: #14171c;
+  --color-accent: #9dc1f1;
+  --color-accent-deep: #7fa8e0;
+  --color-accent-ink: #bcd4f5;
+  --color-signal-red: #e4655f;
+  --color-signal-green: #4cc38a;
+  --color-signal-amber: #e0b054;
+  --color-contour: #1b1f26;
+  --color-on-accent: #0b0d10;
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-paper font-sans text-ink antialiased;
+}
+::selection {
+  background: var(--color-accent);
+  color: var(--color-ink);
+}
+
+/* ---------- 背景层：细网格 ---------- */
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: linear-gradient(var(--color-line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-line-soft) 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.5;
+}
+
+/* ---------- 背景层：山峦波浪（absolute，纵向周期重复） ---------- */
+.bg-waves {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1440' height='760' viewBox='0 0 1440 760' fill='none'%3E%3Cg stroke='%23E2E6EC' stroke-width='1'%3E%3Cpath d='M0,120 C60,60 120,60 180,120 S300,180 360,120 S480,60 540,120 S660,180 720,120 S840,60 900,120 S1020,180 1080,120 S1200,60 1260,120 S1380,180 1440,120'/%3E%3Cpath d='M0,152 C60,92 120,92 180,152 S300,212 360,152 S480,92 540,152 S660,212 720,152 S840,92 900,152 S1020,212 1080,152 S1200,92 1260,152 S1380,212 1440,152'/%3E%3Cpath d='M0,184 C60,124 120,124 180,184 S300,244 360,184 S480,124 540,184 S660,244 720,184 S840,124 900,184 S1020,244 1080,184 S1200,124 1260,184 S1380,244 1440,184'/%3E%3C/g%3E%3Cpath stroke='%239DC1F1' stroke-width='1' opacity='0.45' d='M0,168 C60,108 120,108 180,168 S300,228 360,168 S480,108 540,168 S660,228 720,168 S840,108 900,168 S1020,228 1080,168 S1200,108 1260,168 S1380,228 1440,168'/%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-size: 100% 760px;
+  /* 首道波浪对齐主标题（算法竞赛人）中上部 */
+  background-position: 0 170px;
+}
+.dark .bg-waves {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1440' height='760' viewBox='0 0 1440 760' fill='none'%3E%3Cg stroke='%231B1F26' stroke-width='1'%3E%3Cpath d='M0,120 C60,60 120,60 180,120 S300,180 360,120 S480,60 540,120 S660,180 720,120 S840,60 900,120 S1020,180 1080,120 S1200,60 1260,120 S1380,180 1440,120'/%3E%3Cpath d='M0,152 C60,92 120,92 180,152 S300,212 360,152 S480,92 540,152 S660,212 720,152 S840,92 900,152 S1020,212 1080,152 S1200,92 1260,152 S1380,212 1440,152'/%3E%3Cpath d='M0,184 C60,124 120,124 180,184 S300,244 360,184 S480,124 540,184 S660,244 720,184 S840,124 900,184 S1020,244 1080,184 S1200,124 1260,184 S1380,244 1440,184'/%3E%3C/g%3E%3Cpath stroke='%239DC1F1' stroke-width='1' opacity='0.4' d='M0,168 C60,108 120,108 180,168 S300,228 360,168 S480,108 540,168 S660,228 720,168 S840,108 900,168 S1020,228 1080,168 S1200,108 1260,168 S1380,228 1440,168'/%3E%3C/svg%3E");
+}
+
+/* ---------- 渐变标题文字：主题色 -> 正文色，微倾 ---------- */
+.grad-text {
+  background: linear-gradient(
+    172deg,
+    var(--color-accent) 6%,
+    var(--color-accent-deep) 40%,
+    var(--color-ink) 84%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- 屏幕四角 L 型角标 ---------- */
+.hud-corner {
+  position: fixed;
+  z-index: 30;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+.hud-corner::before,
+.hud-corner::after {
+  content: '';
+  position: absolute;
+  background: var(--color-ink);
+}
+.hud-corner::before { width: 14px; height: 1.5px; }
+.hud-corner::after { width: 1.5px; height: 14px; }
+
+/* ---------- 卡片角标 ---------- */
+.card::before,
+.card::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+.card::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1.5px solid var(--color-ink);
+  border-left: 1.5px solid var(--color-ink);
+}
+.card::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 1.5px solid var(--color-ink);
+  border-right: 1.5px solid var(--color-ink);
+}
+
+/* ---------- 动画 ---------- */
+@keyframes blink { 50% { opacity: 0; } }
+.cursor-blink { animation: blink 1.1s steps(1) infinite; }
+@keyframes pulse-dot { 50% { opacity: 0.25; } }
+.live-dot { animation: pulse-dot 1.4s infinite; }
+
+/* ---------- 复用组件类 ---------- */
+.chip {
+  @apply border px-[7px] py-[3px] font-mono text-[9px] tracking-[0.1em];
+}
+.chip-ac { @apply border-signal-green bg-signal-green/7 text-signal-green; }
+.chip-wa { @apply border-signal-red bg-signal-red/6 text-signal-red; }
+.chip-tle { @apply border-signal-amber bg-signal-amber/8 text-signal-amber; }
+.chip-live { @apply border-accent-deep bg-accent/20 text-accent-ink; }
+.chip-idle { @apply border-ink-faint text-ink-soft; }
+
+.dash-row { border-bottom: 1px dashed var(--color-line-soft); }
+.font-barcode { font-family: 'Libre Barcode 128', monospace; }
+.mono-link {
+  @apply border-b border-accent-deep pb-px font-mono text-[10px] text-ink no-underline;
+}
+.mono-link:hover { color: var(--color-accent-deep); }
+
+.btn-base {
+  @apply inline-block cursor-pointer whitespace-nowrap border border-ink bg-transparent px-[18px] py-2 font-mono text-[11px] tracking-[0.1em] text-ink no-underline;
+}
+.btn-base:hover { @apply bg-ink text-paper; }
+.btn-dark {
+  @apply inline-block cursor-pointer whitespace-nowrap border-none bg-ink px-[22px] py-[9px] pr-[26px] font-mono text-[11px] tracking-[0.1em] text-paper no-underline;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+.btn-dark:hover { background: var(--color-accent-deep); }
+.btn-accent {
+  @apply inline-block cursor-pointer whitespace-nowrap border border-accent bg-accent px-[18px] py-2 font-mono text-[11px] tracking-[0.1em] text-on-accent no-underline;
+}
+.btn-accent:hover { @apply border-accent-deep bg-accent-deep text-white; }
+
+/* 窄屏图标按钮：TS（useNarrow）判定页宽后挂载，固定 30x30 正方形 */
+.btn-square { @apply flex h-[30px] w-[30px] items-center justify-center px-0; }
+.btn-dark.btn-square {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+}
