@@ -14,11 +14,10 @@ const navs = [
   { zh: '题库', icon: 'fa-solid fa-database', to: '/problems' },
   { zh: '比赛', icon: 'fa-solid fa-flag', to: '/contests' },
   { zh: '提交', icon: 'fa-solid fa-code', to: '/submissions' },
+  { zh: '排行', icon: 'fa-solid fa-ranking-star', to: '/rank' },
+  { zh: '讨论', icon: 'fa-regular fa-comments', to: '/discuss' },
 ]
-const extra = [
-  { zh: '排行', icon: 'fa-solid fa-ranking-star' },
-  { zh: '讨论', icon: 'fa-regular fa-comments' },
-]
+const extra: { zh: string; icon: string; to?: string }[] = []
 const isActive = (to: string) =>
   to === '/' ? route.path === '/' : route.path.startsWith(to === '/problems' ? '/problem' : to)
 </script>

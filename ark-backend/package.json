@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "adm-zip": "^0.6.0",
     "express": "^4.21.2"
   },
   "devDependencies": {

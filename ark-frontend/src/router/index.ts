@@ -17,6 +17,11 @@ const router = createRouter({
     { path: '/admin/users', name: 'admin-users', component: () => import('../views/UserManagement.vue') },
     { path: '/contests', name: 'contests', component: () => import('../views/ContestsView.vue') },
     { path: '/contest/:id', name: 'contest', component: () => import('../views/ContestView.vue') },
+    { path: '/discuss', name: 'discuss', component: () => import('../views/DiscussView.vue') },
+    { path: '/discuss/:id', name: 'thread', component: () => import('../views/ThreadView.vue') },
+    { path: '/rank', name: 'rank', component: () => import('../views/RankView.vue') },
+    { path: '/admin/problem/new', name: 'problem-new', component: () => import('../views/ProblemEditorView.vue') },
+    { path: '/admin/problem/:id', name: 'problem-edit', component: () => import('../views/ProblemEditorView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

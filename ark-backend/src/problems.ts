@@ -16,6 +16,9 @@ export interface Problem {
   output: string
   samples: Test[]
   tests: Test[]
+  visibility?: 'hidden' | 'public' | 'contest' // 隐藏 / 公开 / 比赛（赛时仅比赛页可见，赛后自动公开）
+  interactive?: boolean // 交互题
+  interactor?: string // 交互器 C++ 源码：stdin=测试输入，argv[1]=结果文件（写 1/0），与选手程序全双工
 }
 
 export const problems: Problem[] = [
@@ -69,7 +72,7 @@ export const problems: Problem[] = [
     ],
   },
   {
-    id: 'P1018', title: '低温储存', base: 2, tags: ['贪心'],
+    id: 'P1018', title: '低温储存', base: 2, tags: ['贪心'], visibility: 'contest',
     ac: 977, submitted: 2210, tl: 1000,
     statement: ['有 n 份样本与 k 台低温舱，第 i 台低温舱容量 c_i。每份样本体积为 1。', '求最多可储存的样本数。'],
     input: '第一行 n, k。第二行 k 个整数 c_i。',
@@ -111,7 +114,7 @@ export const problems: Problem[] = [
     ],
   },
   {
-    id: 'P1031', title: '信号中继', base: 3, tags: ['贪心', '排序'],
+    id: 'P1031', title: '信号中继', base: 3, tags: ['贪心', '排序'], visibility: 'contest',
     ac: 688, submitted: 2044, tl: 1000,
     statement: ['n 个中继站排成一行，第 i 个的信号强度 s_i。每次操作可将一个站强度 +1。', '求使所有相邻站强度不同的最小操作数。'],
     input: '第一行 n。第二行 n 个整数 s_i。',
@@ -124,7 +127,7 @@ export const problems: Problem[] = [
     ],
   },
   {
-    id: 'P1036', title: '边界协议', base: 1, tags: ['字符串'],
+    id: 'P1036', title: '边界协议', base: 1, tags: ['字符串'], visibility: 'contest',
     ac: 1204, submitted: 1650, tl: 1000,
     statement: ['给定字符串 s，判断它是否以 "ARK" 为前缀且以 "OJ" 为后缀。'],
     input: '一行字符串 s。',
@@ -162,6 +165,37 @@ export const problems: Problem[] = [
       { in: '2 1\n0 0 2 2\n1 1 3 3', out: '7' },
       { in: '2 2\n0 0 1 1\n5 5 6 6', out: '0' },
     ],
+  },
+  {
+    id: 'P1060', title: '向渊行 · 交互', base: 4, tags: ['交互', '二分'],
+    ac: 96, submitted: 407, tl: 1000,
+    statement: [
+      '交互题。评测机心里藏着一个整数 x（1 ≤ x ≤ 1e9）。',
+      '你可以输出猜测 g（不超过 30 次），评测机回应 TOO_BIG（g > x）、TOO_SMALL（g < x）。',
+      '当你猜中时，评测机回应 CORRECT，程序应立即结束。',
+    ],
+    input: '无标准输入；通过 stdout 输出猜测，从 stdin 读取回应。',
+    output: '见交互协议。',
+    samples: [{ in: '(评测机) x = 42\n(你) 50\n(评测机) TOO_BIG\n(你) 25\n(评测机) TOO_SMALL\n…\n(你) 42\n(评测机) CORRECT', out: '' }],
+    tests: [{ in: '42', out: '' }, { in: '1000000000', out: '' }, { in: '1', out: '' }],
+    interactive: true,
+    interactor: `#include <bits/stdc++.h>
+using namespace std;
+int main(int argc, char** argv) {
+  const char* rf = argc > 1 ? argv[1] : "result.txt";
+  long long x;
+  if (!(cin >> x)) { ofstream(rf) << "0"; return 0; }
+  int q = 0;
+  long long g;
+  while (cin >> g) {
+    if (++q > 30) { ofstream(rf) << "0"; return 0; }
+    if (g == x) { cout << "CORRECT" << endl; ofstream(rf) << "1"; return 0; }
+    cout << (g > x ? "TOO_BIG" : "TOO_SMALL") << endl;
+  }
+  ofstream(rf) << "0";
+  return 0;
+}
+`,
   },
 ]
 

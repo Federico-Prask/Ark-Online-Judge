@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { fetchPublicSettings } from '../lib/api'
 import { register } from '../lib/session'
 
 const router = useRouter()
 const username = ref('')
 const password = ref('')
 const confirm = ref('')
+const invite = ref('')
 const error = ref('')
 const busy = ref(false)
+const invNeeded = ref(false)
+
+onMounted(async () => {
+  const s = await fetchPublicSettings().catch(() => null)
+  invNeeded.value = Boolean(s?.inv_needed)
+})
 
 const onSubmit = async () => {
   error.value = ''
@@ -18,7 +26,7 @@ const onSubmit = async () => {
   }
   busy.value = true
   try {
-    await register(username.value, password.value)
+    await register(username.value, password.value, invite.value || undefined)
     router.push('/')
   } catch (e) {
     error.value = e instanceof Error ? e.message : '注册失败'
@@ -54,6 +62,13 @@ const onSubmit = async () => {
         type="password"
         class="mb-5 w-full border border-line bg-paper px-3 py-2.5 font-mono text-[12px] text-ink outline-none focus:border-accent-deep"
       />
+      <template v-if="invNeeded">
+        <label class="mb-1 block font-mono text-[9px] tracking-[0.18em] text-ink-faint">INVITE 邀请码</label>
+        <input
+          v-model="invite"
+          class="mb-5 w-full border border-line bg-paper px-3 py-2.5 font-mono text-[12px] text-ink outline-none focus:border-accent-deep"
+        />
+      </template>
 
       <div v-if="error" class="mb-4 border border-signal-red bg-signal-red/6 px-3 py-2 font-mono text-[10px] text-signal-red">
         [!] {{ error }}

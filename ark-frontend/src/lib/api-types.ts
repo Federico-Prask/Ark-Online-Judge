@@ -1,7 +1,6 @@
-import type { Sample } from './data'
 
 // ---------------- 后端 API 类型 ----------------
-export type Verdict = 'AC' | 'WA' | 'TLE' | 'CE' | 'JUDGING'
+export type Verdict = 'AC' | 'WA' | 'TLE' | 'CE' | 'JUDGING' | 'CANCELLED'
 
 export interface ProblemPub {
   id: string
@@ -14,10 +13,17 @@ export interface ProblemPub {
   rate: number // 新公式通过率 %
   rating: number // 显示评级（一位小数）
   nTests: number
-  statement: string[]
-  input: string
-  output: string
-  samples: Sample[]
+  desc: {
+    background?: string
+    description: string
+    input?: string
+    output?: string
+    notes?: string
+    samples: { in: string; out: string }[]
+  }
+  visibility?: 'hidden' | 'public' | 'contest'
+  interactive?: boolean
+  hasChecker?: boolean
 }
 
 export interface SubRow {
@@ -43,6 +49,9 @@ export interface SubtaskResult {
   points: TestPoint[]
 }
 export interface SubDetail extends SubRow {
+  code?: string
+  opt?: string
+  cid?: string
   detail?: {
     score: number
     ms: number
@@ -59,4 +68,5 @@ export const verdictChip: Record<Verdict, { cls: string; zh: string }> = {
   TLE: { cls: 'chip-tle', zh: '时间超限' },
   CE: { cls: 'chip-idle', zh: '编译错误' },
   JUDGING: { cls: 'chip-live', zh: '评测中' },
+  CANCELLED: { cls: 'chip-idle', zh: '已取消' },
 }

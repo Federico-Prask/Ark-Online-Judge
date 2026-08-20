@@ -2,11 +2,16 @@
 import { computed, onMounted, ref } from 'vue'
 import PageHero from '../components/PageHero.vue'
 import { loadProblems, problemCache } from '../lib/api'
+import { me } from '../lib/session'
 
 const levels: Array<'全部' | number> = ['全部', 1, 2, 3, 4, 5, 6, 7, 8]
 const level = ref<'全部' | number>('全部')
 const q = ref('')
 const loading = ref(true)
+const canManage = computed(() => !!me.value?.perms.includes('problem'))
+
+const visChip = (v?: string) => (v === 'hidden' ? 'chip-wa' : v === 'contest' ? 'chip-tle' : '')
+const visZh = (v?: string) => (v === 'hidden' ? '隐藏' : v === 'contest' ? '比赛' : '')
 
 onMounted(async () => {
   await loadProblems().catch(() => {})
@@ -49,8 +54,11 @@ const ratingChipCls = (base: number) =>
     >
       {{ d === '全部' ? '全部' : `Lv${d}` }}
     </button>
-    <span class="ml-auto font-mono text-[9px] tracking-[0.16em] text-ink-faint">
-      {{ list.length }} / {{ problemCache.length }} SHOWN
+    <span class="ml-auto flex items-center gap-3">
+      <router-link v-if="canManage" to="/admin/problem/new" class="btn-dark">
+        <i class="fa-solid fa-plus mr-1.5" />新建题目
+      </router-link>
+      <span class="font-mono text-[9px] tracking-[0.16em] text-ink-faint">{{ list.length }} / {{ problemCache.length }} SHOWN</span>
     </span>
   </div>
 
@@ -69,12 +77,18 @@ const ratingChipCls = (base: number) =>
         class="grid grid-cols-[70px_1fr_auto] items-center gap-3 border-b border-dashed border-line-soft px-5 py-3.5 no-underline last:border-b-0 hover:bg-accent/10 md:grid-cols-[70px_1fr_80px_120px_70px]"
       >
         <span class="font-mono text-[11px] text-accent-deep">{{ p.id }}</span>
-        <span class="min-w-0">
+      <span class="min-w-0">
+        <span class="flex items-center gap-2">
           <span class="block truncate text-[13px] font-bold text-ink">{{ p.title }}</span>
-          <span class="mt-0.5 block font-mono text-[9px] tracking-[0.1em] text-ink-faint">
-            {{ p.tags.join(' · ') }}
-          </span>
+          <span v-if="p.visibility && p.visibility !== 'public'" class="chip" :class="visChip(p.visibility)">{{ visZh(p.visibility) }}</span>
+          <router-link v-if="canManage" :to="`/admin/problem/${p.id}`" class="text-[10px] text-ink-faint no-underline hover:text-accent-deep" title="编辑">
+            <i class="fa-solid fa-pen" />
+          </router-link>
         </span>
+        <span class="mt-0.5 block font-mono text-[9px] tracking-[0.1em] text-ink-faint">
+          {{ p.tags.join(' · ') }}
+        </span>
+      </span>
         <span><span class="chip" :class="ratingChipCls(p.base)">{{ p.rating.toFixed(1) }}</span></span>
         <span class="hidden text-right font-mono text-[10px] text-ink-soft md:block">
           {{ p.ac }} / {{ p.submitted }}

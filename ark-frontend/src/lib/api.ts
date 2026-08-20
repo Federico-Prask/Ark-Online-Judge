@@ -39,10 +39,10 @@ export const loginApi = (username: string, password: string) =>
     body: JSON.stringify({ username, password }),
   })
 
-export const registerApi = (username: string, password: string) =>
+export const registerApi = (username: string, password: string, invite?: string) =>
   req<{ token: string; user: UserProfile }>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, ...(invite ? { invite } : {}) }),
   })
 
 export const meApi = () => req<UserProfile>('/me')
@@ -79,10 +79,12 @@ export const fetchProblem = (id: string) => req<ProblemPub>(`/problems/${id}`)
 
 // ---------------- 提交 ----------------
 export const recentSubs = ref<SubRow[]>([])
+export const mySubsAll = ref<SubRow[]>([])
 
 export async function loadSubs(): Promise<SubRow[]> {
-  const rows = await req<SubRow[]>('/submissions')
-  recentSubs.value = rows.filter((s) => s.mine).slice(0, 4)
+  const rows = await req<SubRow[]>('/submissions?mine=1')
+  mySubsAll.value = rows
+  recentSubs.value = rows.slice(0, 4)
   return rows
 }
 
@@ -90,12 +92,98 @@ export const userSubs = (name: string) => req<SubRow[]>(`/submissions?user=${enc
 
 export const getSub = (id: number) => req<SubDetail>(`/submissions/${id}`)
 
-export async function submitCode(pid: string, lang: string, code: string, cid?: string): Promise<{ id: number; verdict: Verdict }> {
+export async function submitCode(pid: string, lang: string, code: string, opts?: { cid?: string; opt?: string }): Promise<{ id: number; verdict: Verdict }> {
   return req('/submissions', {
     method: 'POST',
-    body: JSON.stringify({ pid, lang, code, ...(cid ? { cid } : {}) }),
+    body: JSON.stringify({ pid, lang, code, ...opts }),
   })
 }
+
+export interface LangEntry {
+  id: string
+  family: 'cpp' | 'c' | 'py'
+  info: string
+}
+export const fetchLangsCatalog = () =>
+  req<{ langs: LangEntry[]; opts: string[] }>('/languages')
+
+// ---------------- 管理：重测 / 取消 ----------------
+export const rejudgeSub = (id: number) => req<{ ok: boolean }>(`/admin/submissions/${id}/rejudge`, { method: 'POST' })
+export const cancelSub = (id: number) => req<{ ok: boolean }>(`/admin/submissions/${id}/cancel`, { method: 'POST' })
+
+// ---------------- 题目管理 ----------------
+export const adminCreateProblem = (body: Record<string, unknown>) =>
+  req<{ id: string }>('/admin/problems', { method: 'POST', body: JSON.stringify(body) })
+export const adminEditProblem = (id: string, body: Record<string, unknown>) =>
+  req<{ ok: boolean }>(`/admin/problems/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+
+export const fetchTestFiles = (id: string) => req<{ files: string[] }>(`/admin/problems/${id}/tests`)
+
+export async function uploadTestsZip(id: string, file: File): Promise<{ added: string[] }> {
+  const t = getToken()
+  const r = await fetch(`/api/admin/problems/${id}/testszip`, {
+    method: 'POST',
+    body: file,
+    headers: {
+      'Content-Type': 'application/zip',
+      ...(t ? { Authorization: `Bearer ${t}` } : {}),
+    },
+  })
+  const data = (await r.json()) as { added?: string[]; error?: string }
+  if (!r.ok) throw new Error(data.error ?? `API ${r.status}`)
+  return data as { added: string[] }
+}
+
+// ---------------- 站点设置 ----------------
+export interface SiteSettings {
+  new_access: boolean
+  inv_needed: boolean
+  inv_code: string
+}
+export const fetchPublicSettings = () => req<{ new_access: boolean; inv_needed: boolean }>('/settings')
+export const fetchAdminSettings = () => req<SiteSettings>('/admin/settings')
+export const patchAdminSettings = (body: Partial<SiteSettings>) =>
+  req<SiteSettings>('/admin/settings', { method: 'PATCH', body: JSON.stringify(body) })
+
+// ---------------- 讨论 ----------------
+export interface ThreadPub {
+  id: number
+  title: string
+  author: string
+  ts: number
+  content: string
+  category: 'announce' | 'help' | 'solution' | 'water'
+  replyCount: number
+  replies?: { id: number; author: string; ts: number; content: string }[]
+}
+export const fetchDiscussions = () => req<ThreadPub[]>('/discussions')
+export const fetchThread = (id: number) => req<ThreadPub>(`/discussions/${id}`)
+export const postThread = (title: string, content: string, category: string) =>
+  req<ThreadPub>('/discussions', { method: 'POST', body: JSON.stringify({ title, content, category }) })
+export const postReply = (id: number, content: string) =>
+  req<ThreadPub>(`/discussions/${id}/replies`, { method: 'POST', body: JSON.stringify({ content }) })
+export const deleteThreadApi = (id: number) => req<{ ok: boolean }>(`/discussions/${id}`, { method: 'DELETE' })
+export const deleteReplyApi = (tid: number, rid: number) =>
+  req<{ ok: boolean }>(`/discussions/${tid}/replies/${rid}`, { method: 'DELETE' })
+
+// ---------------- 排行榜 ----------------
+export interface RankEntry {
+  name: string
+  uid: number
+  solved: string[]
+  submits: number
+  rating: number
+  streak: number
+}
+export const fetchUserRank = () => req<RankEntry[]>('/rank')
+
+export interface SiteStats {
+  problems: number
+  users: number
+  today: number
+  nodes: number
+}
+export const fetchSiteStats = () => req<SiteStats>('/stats')
 
 // ---------------- 比赛 ----------------
 export interface ContestPub {

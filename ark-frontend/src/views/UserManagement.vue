@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminDeleteUser, adminPatchUser, adminUsers, type UserProfile } from '../lib/api'
+import { adminDeleteUser, adminPatchUser, adminUsers, fetchAdminSettings, patchAdminSettings, type SiteSettings, type UserProfile } from '../lib/api'
 import { logout, me, restoreSession } from '../lib/session'
 import { ADMIN_PERMS, DEFAULT_PERMS, PERM_META, type PermKey } from '../lib/perms'
 
@@ -13,9 +13,24 @@ const loading = ref(true)
 const canUserPerms = computed(() => !!me.value?.perms.includes('user_perms'))
 const canAdminAdmin = computed(() => !!me.value?.perms.includes('admin_admin'))
 
+// ---------------- 站点设置 ----------------
+const settings = ref<SiteSettings | null>(null)
+const settingsMsg = ref('')
+const saveSettings = async () => {
+  if (!settings.value) return
+  settingsMsg.value = ''
+  try {
+    settings.value = await patchAdminSettings(settings.value)
+    settingsMsg.value = '✓ 已保存'
+  } catch (e) {
+    settingsMsg.value = e instanceof Error ? e.message : '保存失败'
+  }
+}
+
 onMounted(async () => {
   // 先刷新会话，避免跨后端世代的陈旧 me
   await restoreSession()
+  if (canUserPerms.value) settings.value = await fetchAdminSettings().catch(() => null)
   if (!canUserPerms.value) {
     router.replace('/')
     return
@@ -228,6 +243,30 @@ const doDelete = async (name: string) => {
 
       <div v-if="filtered.length === 0" class="px-5 py-10 text-center font-mono text-[10px] tracking-[0.2em] text-ink-faint">
         // NO MATCH — 换个关键词
+      </div>
+    </section>
+
+    <!-- 站点设置 -->
+    <section v-if="settings" class="card relative mt-8 border border-line bg-card px-6 py-5">
+      <h2 class="mb-4 border-b border-line-soft pb-2.5 text-[13px] font-extrabold">
+        <span class="font-mono font-normal text-accent-deep">[</span> 站点设置 <span class="font-mono font-normal text-accent-deep">]</span>
+        <span class="ml-2 font-mono text-[8px] tracking-[0.22em] text-ink-faint">SITE.SETTINGS</span>
+      </h2>
+      <label class="flex cursor-pointer items-center gap-2 py-1.5 font-mono text-[11px] text-ink">
+        <input v-model="settings.new_access" type="checkbox" class="accent-[#5E8FD4]" />
+        new_access —— 新用户默认能够进入 OJ
+      </label>
+      <label class="flex cursor-pointer items-center gap-2 py-1.5 font-mono text-[11px] text-ink">
+        <input v-model="settings.inv_needed" type="checkbox" class="accent-[#5E8FD4]" />
+        inv_needed —— 注册需要邀请码
+      </label>
+      <div class="mt-2">
+        <label class="mb-1 block font-mono text-[9px] tracking-[0.18em] text-ink-faint">inv_code —— 邀请码</label>
+        <input v-model="settings.inv_code" class="w-full max-w-[320px] border border-line bg-paper px-3 py-2 font-mono text-[12px] text-ink outline-none focus:border-accent-deep" />
+      </div>
+      <div class="mt-4 flex items-center gap-3">
+        <button class="btn-dark" @click="saveSettings">保存设置 <i class="fa-solid fa-floppy-disk ml-1.5" /></button>
+        <span class="font-mono text-[10px] text-signal-green">{{ settingsMsg }}</span>
       </div>
     </section>
 

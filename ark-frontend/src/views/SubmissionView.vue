@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getSub, pollSub } from '../lib/api'
+import { cancelSub, getSub, loadSubs, pollSub, rejudgeSub } from '../lib/api'
 import type { SubDetail } from '../lib/api-types'
 import { verdictChip } from '../lib/api-types'
+import { me } from '../lib/session'
 import JudgementOverlay from '../components/JudgementOverlay.vue'
 
 const route = useRoute()
@@ -28,7 +29,48 @@ onMounted(async () => {
     })
   }
 })
-onUnmounted(() => stopPolling?.())
+onUnmounted(() => {
+  stopPolling?.()
+  stopPoll?.()
+})
+
+// ---------------- 管理员：重测 / 取消成绩（动作后轮询直至落定，立即刷新） ----------------
+const canProblemAdmin = computed(() => !!me.value?.perms.includes('problem'))
+const confirmCancel = ref(false)
+let cancelTimer = 0
+let stopPoll: (() => void) | undefined
+
+const followUp = () => {
+  // 重测后轮询，直到判完；期间状态实时翻牌
+  stopPoll?.()
+  stopPoll = pollSub(subId, (d) => {
+    sub.value = d
+    if (d.verdict !== 'JUDGING') void loadSubs().catch(() => {})
+  })
+}
+
+const askCancel = () => {
+  if (confirmCancel.value) {
+    void (async () => {
+      try {
+        await cancelSub(subId)
+        sub.value = await getSub(subId)
+        void loadSubs().catch(() => {}) // 同步所有提交列表
+      } finally {
+        confirmCancel.value = false
+      }
+    })()
+  } else {
+    confirmCancel.value = true
+    window.clearTimeout(cancelTimer)
+    cancelTimer = window.setTimeout(() => (confirmCancel.value = false), 3000)
+  }
+}
+const doRejudge = async () => {
+  await rejudgeSub(subId)
+  sub.value = await getSub(subId)
+  followUp()
+}
 
 const tpIcon = { AC: 'fa-solid fa-check', WA: 'fa-solid fa-xmark', TLE: 'fa-regular fa-clock' }
 const tpColor = { AC: 'text-signal-green', WA: 'text-signal-red', TLE: 'text-signal-amber' }
@@ -84,6 +126,27 @@ const tpColor = { AC: 'text-signal-green', WA: 'text-signal-red', TLE: 'text-sig
           <div class="mt-1 font-mono text-[8.5px] tracking-[0.16em] text-ink-faint">POINTS 测试点</div>
         </div>
       </div>
+    </section>
+
+    <!-- 第一张卡片：用户代码 + 管理员操作 -->
+    <section class="card relative mb-8 border border-line bg-card">
+      <header class="flex items-center justify-between border-b border-line-soft px-5 py-2.5">
+        <span class="text-[12px] font-extrabold">
+          <span class="font-mono font-normal text-accent-deep">[</span> 代码 <span class="font-mono font-normal text-accent-deep">]</span>
+          <span class="ml-2 font-mono text-[8px] tracking-[0.22em] text-ink-faint">
+            {{ sub.lang }}<template v-if="sub.opt"> · -{{ sub.opt }}</template><template v-if="sub.cid"> · {{ sub.cid }}</template>
+          </span>
+        </span>
+        <span v-if="canProblemAdmin" class="flex gap-2">
+          <button class="chip chip-live cursor-pointer" :disabled="judging" @click="doRejudge">
+            <i class="fa-solid fa-rotate-right mr-1 text-[8px]" />重测
+          </button>
+          <button class="chip chip-wa cursor-pointer" @click="askCancel">
+            {{ confirmCancel ? '确认取消?' : '取消成绩' }}
+          </button>
+        </span>
+      </header>
+      <pre class="max-h-[420px] overflow-auto px-5 py-4 font-mono text-[11.5px] leading-6 text-ink">{{ sub.code || '// 源码未保存' }}</pre>
     </section>
 
     <section v-if="judging" class="card relative mb-16 border border-line bg-card px-6 py-14 text-center">

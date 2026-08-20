@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchProblem, fetchLangs, loadSubs, submitCode } from '../lib/api'
+import { fetchProblem, fetchLangsCatalog, loadSubs, submitCode, type LangEntry } from '../lib/api'
 import type { ProblemPub, SubRow } from '../lib/api-types'
 import { verdictChip } from '../lib/api-types'
 
@@ -10,12 +10,17 @@ const router = useRouter()
 const cid = route.query.cid ? String(route.query.cid) : undefined
 
 const problem = ref<ProblemPub | null>(null)
-const langs = ref<string[]>([])
 const mySubs = ref<SubRow[]>([])
 const submitting = ref(false)
 
+const langEntries = ref<LangEntry[]>([])
+const opts = ref<string[]>(['O0', 'O1', 'O2', 'O3', 'Ofast'])
 const lang = ref('C++17')
+const opt = ref('O2')
 const code = ref('#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // your code here\n    return 0;\n}\n')
+
+const langInfoLine = () => langEntries.value.find((l) => l.id === lang.value)?.info ?? ''
+const isCompiled = () => langEntries.value.find((l) => l.id === lang.value)?.family !== 'py'
 
 const ratingChipCls = (base: number) =>
   base <= 2 ? 'chip-ac' : base === 3 ? 'chip-live' : base <= 5 ? 'chip-tle' : 'chip-wa'
@@ -27,10 +32,11 @@ onMounted(async () => {
     problem.value = null
   }
   try {
-    langs.value = await fetchLangs()
-    if (langs.value.length > 0) lang.value = langs.value[0]
+    const cat = await fetchLangsCatalog()
+    langEntries.value = cat.langs
+    opts.value = cat.opts
   } catch {
-    langs.value = ['C++17', 'Python 3']
+    langEntries.value = []
   }
   const all = await loadSubs().catch(() => [] as SubRow[])
   mySubs.value = all.filter((s) => s.mine && s.pid === route.params.id).slice(0, 6)
@@ -40,7 +46,7 @@ const onSubmit = async () => {
   if (!problem.value || submitting.value) return
   submitting.value = true
   try {
-    const r = await submitCode(problem.value.id, lang.value, code.value, cid)
+    const r = await submitCode(problem.value.id, lang.value, code.value, { cid, opt: opt.value })
     router.push(`/submission/${r.id}`)
   } finally {
     submitting.value = false
@@ -68,6 +74,9 @@ const onSubmit = async () => {
             <i class="fa-solid fa-flag mr-1 text-[8px]" />参赛 {{ cid }}
           </router-link>
           <span class="chip" :class="ratingChipCls(problem.base)">Lv {{ problem.rating.toFixed(1) }}</span>
+          <span v-if="problem.interactive" class="chip chip-live" title="交互题：程序与交互器全双工通信">
+            <i class="fa-solid fa-tower-broadcast mr-1 text-[8px]" />交互
+          </span>
           <span v-for="t in problem.tags" :key="t" class="border border-line px-2 py-0.5 font-mono text-[9px] text-ink-soft">{{ t }}</span>
           <span class="ml-2 font-mono text-[9px] tracking-[0.14em] text-ink-faint">
             AC {{ problem.ac }} / {{ problem.submitted }} · RATE {{ problem.rate }}% · TL {{ problem.tl }}ms · {{ problem.nTests }} TESTS
@@ -82,30 +91,37 @@ const onSubmit = async () => {
           <span class="font-mono font-normal text-accent-deep">[</span> 题目描述 <span class="font-mono font-normal text-accent-deep">]</span>
           <span class="ml-2 font-mono text-[8px] tracking-[0.22em] text-ink-faint">DESCRIPTION</span>
         </h2>
-        <p v-for="(s, i) in problem.statement" :key="i" class="mb-3 text-[13px] leading-7 text-ink-soft">{{ s }}</p>
+        <p v-if="problem.desc.background" class="mb-4 border-l-2 border-accent pl-3 text-[12.5px] leading-7 text-ink-faint">
+          {{ problem.desc.background }}
+        </p>
+        <p class="mb-3 whitespace-pre-wrap text-[13px] leading-7 text-ink-soft">{{ problem.desc.description }}</p>
 
         <h2 class="mb-2 mt-6 text-[13px] font-extrabold">
           <span class="font-mono font-normal text-accent-deep">[</span> 输入格式 <span class="font-mono font-normal text-accent-deep">]</span>
         </h2>
-        <p class="mb-4 text-[13px] leading-7 text-ink-soft">{{ problem.input }}</p>
+        <p class="mb-4 text-[13px] leading-7 text-ink-soft">{{ problem.desc.input }}</p>
 
         <h2 class="mb-2 text-[13px] font-extrabold">
           <span class="font-mono font-normal text-accent-deep">[</span> 输出格式 <span class="font-mono font-normal text-accent-deep">]</span>
         </h2>
-        <p class="mb-4 text-[13px] leading-7 text-ink-soft">{{ problem.output }}</p>
+        <p class="mb-4 text-[13px] leading-7 text-ink-soft">{{ problem.desc.output }}</p>
 
-        <div v-for="(s, i) in problem.samples" :key="i" class="mt-5 grid gap-3 md:grid-cols-2">
+        <p v-if="problem.desc.notes" class="mb-4 border border-line bg-paper px-3 py-2 font-mono text-[10px] leading-relaxed text-ink-soft">
+          // {{ problem.desc.notes }}
+        </p>
+
+        <div v-for="(s, i) in problem.desc.samples" :key="i" class="mt-5 grid gap-3 md:grid-cols-2">
           <div>
             <div class="mb-1.5 flex justify-between font-mono text-[9px] tracking-[0.18em] text-ink-faint">
               <span>输入样例 {{ i + 1 }}</span><span>SAMPLE.IN</span>
             </div>
-            <pre class="overflow-x-auto border border-line bg-paper px-3.5 py-2.5 font-mono text-[11.5px] leading-6 text-ink">{{ s.input }}</pre>
+            <pre class="overflow-x-auto border border-line bg-paper px-3.5 py-2.5 font-mono text-[11.5px] leading-6 text-ink">{{ s.in }}</pre>
           </div>
           <div>
             <div class="mb-1.5 flex justify-between font-mono text-[9px] tracking-[0.18em] text-ink-faint">
               <span>输出样例 {{ i + 1 }}</span><span>SAMPLE.OUT</span>
             </div>
-            <pre class="overflow-x-auto border border-line bg-paper px-3.5 py-2.5 font-mono text-[11.5px] leading-6 text-ink">{{ s.output }}</pre>
+            <pre class="overflow-x-auto border border-line bg-paper px-3.5 py-2.5 font-mono text-[11.5px] leading-6 text-ink">{{ s.out }}</pre>
           </div>
         </div>
       </section>
@@ -117,13 +133,34 @@ const onSubmit = async () => {
               <span class="font-mono font-normal text-accent-deep">[</span> 代码 <span class="font-mono font-normal text-accent-deep">]</span>
               <span class="ml-2 font-mono text-[8px] tracking-[0.22em] text-ink-faint">EDITOR</span>
             </span>
-            <select
-              v-model="lang"
-              class="cursor-pointer border border-line bg-card px-2 py-1 font-mono text-[10px] text-ink outline-none"
-            >
-              <option v-for="l in langs" :key="l">{{ l }}</option>
-            </select>
+            <span class="flex items-center gap-2">
+              <select
+                v-model="lang"
+                class="cursor-pointer border border-line bg-card px-2 py-1 font-mono text-[10px] text-ink outline-none"
+              >
+                <optgroup label="C++">
+                  <option v-for="l in langEntries.filter((x) => x.family === 'cpp')" :key="l.id" :value="l.id">{{ l.id }}</option>
+                </optgroup>
+                <optgroup label="C">
+                  <option v-for="l in langEntries.filter((x) => x.family === 'c')" :key="l.id" :value="l.id">{{ l.id }}</option>
+                </optgroup>
+                <optgroup label="Python">
+                  <option v-for="l in langEntries.filter((x) => x.family === 'py')" :key="l.id" :value="l.id">{{ l.id }}</option>
+                </optgroup>
+              </select>
+              <select
+                v-if="isCompiled()"
+                v-model="opt"
+                class="cursor-pointer border border-line bg-card px-2 py-1 font-mono text-[10px] text-ink outline-none"
+                title="优化选项"
+              >
+                <option v-for="o in opts" :key="o" :value="o">-{{ o }}</option>
+              </select>
+            </span>
           </header>
+          <div class="border-b border-line-soft bg-paper px-4 py-2 font-mono text-[9px] leading-relaxed tracking-[0.08em] text-ink-faint">
+            // {{ langInfoLine() }}
+          </div>
           <textarea
             v-model="code"
             spellcheck="false"

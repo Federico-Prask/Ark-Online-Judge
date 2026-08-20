@@ -21,8 +21,8 @@ export async function login(username: string, password: string) {
   me.value = r.user
 }
 
-export async function register(username: string, password: string) {
-  const r = await registerApi(username, password)
+export async function register(username: string, password: string, invite?: string) {
+  const r = await registerApi(username, password, invite)
   setToken(r.token)
   me.value = r.user
 }
